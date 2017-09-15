@@ -1,0 +1,102 @@
+  {
+	"crops": {
+		"SM": {
+			"is-winter-crop": false,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/fnr-voce/maize.json"],
+				"cultivar": ["include-from-file", "monica-parameters/crops/maize/silage-maize.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
+		},
+		"WR": {
+			"is-winter-crop": true,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/fnr-voce/rape.json"],
+				"cultivar": ["include-from-file", "monica-parameters/crops/rape/winter-rape.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/rape.json"]
+		},
+		"WW": {
+			"is-winter-crop": true,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/fnr-voce/wheat.json"],
+				"cultivar": ["include-from-file", "monica-parameters/crops/wheat/winter-wheat.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/wheat.json"]
+		}
+	},
+	
+	"fert-params": {
+		"AN": ["include-from-file", "monica-parameters/mineral-fertilisers/AN.json"],
+		"U": ["include-from-file", "monica-parameters/mineral-fertilisers/U.json"]
+	}, 
+
+	"cropRotation": [
+		{
+			"worksteps": [
+				{ "date": "2014-10-07", "type": "Seed", "crop": ["ref", "crops", "WW"] },
+				{
+					"date": "2015-03-23",
+					"type": "MineralFertiliserApplication",
+					"amount": [80.0, "kg N"],
+					"partition": ["ref", "fert-params", "AN"]
+				},
+				{
+					"date": "2015-04-22",
+					"type": "MineralFertiliserApplication",
+					"amount": [80.0, "kg N"],
+					"partition": ["ref", "fert-params", "U"]
+				},
+				{ "date": "2015-08-14", "type": "Harvest"}
+			]
+		},
+		{
+			"worksteps": [
+				{ "date": "2015-08-26", "type": "Seed", "crop": ["ref", "crops", "WR"] },
+				{	
+					"date": "2015-09-03",
+					"type": "MineralFertiliserApplication",
+					"amount": [30.0, "kg N"],
+					"partition": ["ref", "fert-params", "AN"]
+				},
+				{
+					"date": "2016-03-01",
+					"type": "MineralFertiliserApplication",
+					"amount": [80.0, "kg N"],
+					"partition": ["ref", "fert-params", "U"]
+				},
+				{	
+					"date": "2016-04-06",
+					"type": "MineralFertiliserApplication",
+					"amount": [60.0, "kg N"],
+					"partition": ["ref", "fert-params", "AN"]
+				},
+				{ "date": "2016-07-28", "type": "Harvest"}
+			]
+		}
+
+	],
+
+	"2 cropRotation": [
+		{
+			"worksteps": [
+				{ "date": "2014-10-07", "type": "Seed", "crop": ["ref", "crops", "WW"] },
+				{ "date": "2015-03-19", "type": "Harvest", "exported": false }
+			]
+		},
+		{
+			"worksteps": [
+				{
+					"date": "2015-04-29",
+					"type": "MineralFertiliserApplication",
+					"amount": [160.0, "kg N"],
+					"partition": ["ref", "fert-params", "U"]
+				},
+				{ "date": "2015-04-29", "type": "Seed", "crop": ["ref", "crops", "SM"] },
+				{ "date": "2015-09-25", "type": "Harvest"}
+			]
+		}
+	],
+
+	"CropParameters": ["include-from-file", "monica-parameters/general/crop.json"]
+}
