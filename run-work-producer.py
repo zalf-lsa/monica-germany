@@ -58,13 +58,15 @@ def main():
 
     context = zmq.Context()
     socket = context.socket(zmq.PUSH)
+    config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
         "user": "xps15",
         "port": "6666",
-        "server": "cluster2",
-        "start-row": "1",
-        "end-row": "8157"
+        "no-data-port": "5555",
+        "server": "cluster2"#,
+        #"start-row": "1",
+        #"end-row": "8157"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -76,10 +78,13 @@ def main():
 
     soil_db_con = sqlite3.connect(paths["path-to-soil-dir"] + "soil.sqlite")
 
+    config_and_no_data_socket.bind("tcp://*:" + str(config["no-data-port"]))
+
     if LOCAL_RUN:
         socket.connect("tcp://localhost:" + str(config["port"]))
     else:
         socket.connect("tcp://" + config["server"] + ":" + str(config["port"]))
+
 
     with open("sim.json") as _:
         sim = json.load(_)
@@ -167,11 +172,11 @@ def main():
 
     #soil_ids = read_ascii_grid_into_numpy_array(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc")
 
-    germany_dwd_lats = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-lat-lon-coordinates.grid", 2, \
-    lambda s: float(s.split("|")[0]), np_dtype=np.float)
+    #germany_dwd_lats = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-lat-lon-coordinates.grid", 2, \
+    #lambda s: float(s.split("|")[0]), np_dtype=np.float)
 
-    germany_dwd_nodata = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-data-no-data.grid", 2, \
-    lambda s: 0 if s == "-" else 1)
+    #germany_dwd_nodata = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-data-no-data.grid", 2, \
+    #lambda s: 0 if s == "-" else 1)
     
 
     def update_soil(soil_res, row, col, crop_id):
@@ -184,62 +189,99 @@ def main():
         #print site["SiteParameters"]["SoilProfileParameters"]
 
 
-    i = 1
+    sent_env_count = 1
     start_time = time.clock()
 
     with open(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc") as soil_f:
 
-        no_all_scols = -1
-        no_all_srows = -1
+        scols = -1
+        srows = -1
         scellsize = -1
-        for i in range(0, 6):
+        xllcorner = -1
+        yllcorner = -1
+        for sent_env_count in range(0, 6):
             line = soil_f.readline()
-            sline = line.split(sep=" ")
+            sline = [x for x in line.split(" ") if len(x) > 0]
             if len(sline) > 1:
                 key = sline[0].strip().upper()
                 if key == "NCOLS":
-                    no_all_scols = int(sline[1].strip())
+                    scols = int(sline[1].strip())
                 elif key == "NROWS":
-                    no_all_srows = int(sline[1].strip())
+                    srows = int(sline[1].strip())
                 elif key == "CELLSIZE":
                     scellsize = int(sline[1].strip())
+                elif key == "YLLCORNER":
+                    yllcorner = int(sline[1].strip())
+                elif key == "XLLCORNER":
+                    xllcorner = int(sline[1].strip())
                     
-        sresolution = 10
-        no_srows = no_all_srows / sresolution
-        no_scols = no_all_scols / sresolution
-        lines = np.empty(sresolution, dtype=object)
+        resolution = 10
+        vrows = srows // resolution
+        vcols = scols // resolution
+        lines = np.empty(resolution, dtype=object)
 
-        for srow in xrange(0, no_srows, sresolution):
+        # send config information to consumer
+        config_and_no_data_socket.send_json({
+            "nrows": vrows, 
+            "ncols": vcols,
+            "cellsize": scellsize * resolution,
+            "xllcorner": xllcorner,
+            "yllcorner": yllcorner,
+            "no-data": -9999
+        })
 
-            for k in xrange(0, sresolution):
-                lines[k] = np.fromstring(gin.readline(), dtype=int, sep=" ")
+        for srow in xrange(0, srows, resolution):
 
-            for scol in xrange(0, no_scols, sresolution):
+            #virtual row
+            vrow = srow // resolution
+
+            print "srow:", srow, "vrow:", vrow
+
+            for k in xrange(0, resolution):
+                lines[k] = np.fromstring(soil_f.readline(), dtype=int, sep=" ")
+
+            for scol in xrange(0, scols, resolution):
 
                 unique_jobs = defaultdict(lambda: 0)
 
-                for line in lines:
-                    for col in xrange(scol*sresolution, (scol+1)*resolution):
+                #virtual col
+                vcol = scol // resolution
+                print "scol:", scol, "vcol:", vcol
+
+                full_no_data_block = True
+                for line_idx, line in enumerate(lines):
+                    row = srow + line_idx
+
+                    for col in xrange(vcol*resolution, (vcol+1)*resolution):
 
                         soil_id = line[col]
                         if soil_id == -9999:
                             continue
-
+                        
                         #get coordinate of clostest climate element of real soil-cell
-                        sh = yll + (scellsize / 2) + (srows - srow) * scellsize
-                        sr = xll + (scellsize / 2) + scol * scellsize
+                        sh = yllcorner + (scellsize / 2) + (srows - row) * scellsize
+                        sr = xllcorner + (scellsize / 2) + col * scellsize
                         #inter = crow/ccol encoded into integer
                         inter = interpol(sh, sr)
                         
                         unique_jobs[(inter, soil_id)] += 1
 
+                        full_no_data_block = False
+
+                if full_no_data_block:
+                    config_and_no_data_socket.send_json({
+                        "type": "no-data",
+                        "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol)
+                    })
+                    continue
+
                 for (inter, soil_id), job in unique_jobs.iteritems():
                     
                     crow = int(inter / 1000)
                     ccol = inter - (crow * 1000)
-                    clat, clon = cdict[(crow, ccol)]
-                    slon, slat = transform(gk5, wgs84, r, h)
-                    print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
+                    #clat, clon = cdict[(crow, ccol)]
+                    #slon, slat = transform(gk5, wgs84, r, h)
+                    #print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
                     
                     site["SiteParameters"]["SoilProfileParameters"] = soil_io.soil_parameters(soil_db_con, soil_id)
                     env = monica_io.create_env_json_from_json_config({
@@ -252,129 +294,26 @@ def main():
                     env["csvViaHeaderOptions"] = sim["climate.csv-options"]
 
                     if LOCAL_RUN:
-                        env["pathToClimateCSV"] = paths["path-to-climate-csvs"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        env["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
                     else:
-                        env["pathToClimateCSV"] = paths["archive-path-to-climate-csvs"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        env["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
 
 
-                    env["customId"] = crop_id \
-                    + "|" + str(climate_resolution) \
-                    + "|(" + str(climate_row) + "/" + str(climate_col) + ")" \
-                    + "|" + str(soil_resolution) \
-                    + "|(" + str(soil_row) + "/" + str(soil_col) + ")" \
-                    + "|" + period \
-                    + "|" + grcp \
-                    + "|" + gcm \
-                    + "|" + production_id
+                    env["customId"] = str(resolution) \
+                    + "|" + str(vrow) + "|" + str(vcol) #\
+                    #+ "|(" + str(crow) + "/" + str(ccol) + ")"
 
                     #with open("envs/env-"+str(i)+".json", "w") as _:
                     #    _.write(json.dumps(env))
 
-                    socket.send_json(env)
-                    print "sent env ", i, " customId: ", env["customId"]
+                    #socket.send_json(env)
+                    print "sent env ", sent_env_count, " customId: ", env["customId"]
                     #exit()
-                    i += 1
+                    sent_env_count += 1
 
+    stop_time = time.clock()
 
-
-
-
-
-    for c2s in climate_to_soil:
-
-        step = c2s["step"]
-        climate_resolution = c2s["climate"]
-        soil_resolution = c2s["soil"]
-
-        climate_to_soils = defaultdict(set)
-        for mmm in lookup:
-            climate_to_soils[mmm[climate_resolution]].add(mmm[soil_resolution])
-
-        print "step: ", step, " ", sum([len(s[1]) for s in climate_to_soils.iteritems()]), " runs in climate_res: ", climate_resolution, " and soil_res: ", soil_resolution
-
-        for (climate_row, climate_col), soil_coords in climate_to_soils.iteritems():
-
-            #if (climate_row, climate_col) != (6,6):
-            #    continue
-
-            for soil_row, soil_col in soil_coords:
-
-                #if (soil_row, soil_col) != (11,11):
-                #    continue
-
-                for crop_id in ["W", "M"]:
-                    rootdepth_soillimited = update_soil(soil_resolution, soil_row, soil_col, crop_id)
-                    env = monica_io.create_env_json_from_json_config({
-                        "crop": crop,
-                        "site": site,
-                        "sim": sim,
-                        "climate": ""
-                    })
-
-                    env["csvViaHeaderOptions"] = sim["climate.csv-options"]
-                    env["events"] = sims["output"][crop_id]
-                    for workstep in env["cropRotation"][0]["worksteps"]:
-                        if workstep["type"] == "Seed":
-                            current_rootdepth = float(workstep["crop"]["cropParams"]["cultivar"]["CropSpecificMaxRootingDepth"])
-                            workstep["crop"]["cropParams"]["cultivar"]["CropSpecificMaxRootingDepth"] = min(current_rootdepth, rootdepth_soillimited)
-                            break
-                    
-                    for production_id, switches in production_situations.iteritems():
-
-                        env["params"]["simulationParameters"]["WaterDeficitResponseOn"] = switches["water-response"]
-                        env["params"]["simulationParameters"]["NitrogenResponseOn"] = switches["nitrogen-response"]
-
-                        for period_gcm in period_gcms:
-
-                            grcp = period_gcm["grcp"]
-                            period = period_gcm["period"]
-                            gcm = period_gcm["gcm-rcp"]
-
-                            #if period != "0":
-                            #    continue
-                            #if climate_resolution != 50:
-                            #    continue
-                            #if soil_resolution != 25:
-                            #    continue
-                            #if crop_id != "W":
-                            #    continue
-
-                            if period != "0":
-                                climate_filename = "daily_mean_P{}_GRCP_{}_RES{}_C0{}R{}.csv".format(period, grcp, climate_resolution, climate_col, climate_row)
-                            else:
-                                climate_filename = "daily_mean_P{}_RES{}_C0{}R{}.csv".format(period, climate_resolution, climate_col, climate_row)
-                                
-                            if LOCAL_RUN:
-                                env["pathToClimateCSV"] = PATHS[USER]["LOCAL_ARCHIVE_PATH_TO_PROJECT"] + "Climate_data/NRW_weather_climate_change_v3/res_" + str(climate_resolution) + "/period_" + period + "/GRCP_" + grcp + "/" + climate_filename
-                            else:
-                                env["pathToClimateCSV"] = PATHS[USER]["ARCHIVE_PATH_TO_PROJECT"] + "Climate_data/NRW_weather_climate_change_v3/res_" + str(climate_resolution) + "/period_" + period + "/GRCP_" + grcp + "/" + climate_filename
-
-                            #initialize nitrate/ammonium in soil layers at start of simulation 
-                            #for i in range(3):
-                            #    env["cropRotation"][0]["worksteps"][i]["date"] = start_year[period] + "-01-01"
-
-                            env["customId"] = crop_id \
-                                                + "|" + str(climate_resolution) \
-                                                + "|(" + str(climate_row) + "/" + str(climate_col) + ")" \
-                                                + "|" + str(soil_resolution) \
-                                                + "|(" + str(soil_row) + "/" + str(soil_col) + ")" \
-                                                + "|" + period \
-                                                + "|" + grcp \
-                                                + "|" + gcm \
-                                                + "|" + production_id
-
-                            #with open("envs/env-"+str(i)+".json", "w") as _:
-                            #    _.write(json.dumps(env))
-
-                            socket.send_json(env)
-                            print "sent env ", i, " customId: ", env["customId"]
-                            #exit()
-                            i += 1
-
-
-    stop_store = time.clock()
-
-    print "sending ", (i-1), " envs took ", (stop_store - start_store), " seconds"
+    print "sending ", (sent_env_count-1), " envs took ", (stop_time - start_time), " seconds"
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
     return
 

@@ -37,12 +37,21 @@ import monica_io
 
 LOCAL_RUN = True #False
 
-def create_output(cl_res, cl_row, cl_col, s_res, s_row, s_col, crop_id, period, gcm, result):
-    "create crop output lines"
+PATHS = {
+    "lc": {
+        "local-path-to-output-dir": "out/"
+    },
+    "xps15": {
+        "local-path-to-output-dir": "out/"
+    }
+}
 
-    out = []
+
+def create_output(result):
+    "create output structure for single run"
+
+    cm_count_to_vals = defaultdict(dict)
     if len(result.get("data", [])) > 0 and len(result["data"][0].get("results", [])) > 0:
-        year_to_vals = defaultdict(dict)
 
         for data in result.get("data", []):
             results = data.get("results", [])
@@ -68,134 +77,153 @@ def create_output(cl_res, cl_row, cl_col, s_res, s_row, s_col, crop_id, period, 
                     else:
                         vals[name] = val
 
-                if "Year" not in vals:
-                    print "Missing Year in result section. Skipping results section."
+                if "CM-count" not in vals or "Crop" not in vals:
+                    print "Missing CM-count or Crop in result section. Skipping results section."
                     continue
 
-                #this filters out the last started (but not finished) cropping season for wheat
-                if vals.get("DOY", 366) < 365 or crop_id == "M":
-                    year_to_vals[vals.get("Year", 0)].update(vals)
+                cm_count_to_vals[vals["CM-count"]].update(vals)
 
-        for year, vals in OrderedDict(sorted(year_to_vals.items())).iteritems():
-            if len(vals) > 0: #and (crop_id == "W" or year > 1980):
-                if cl_res <= s_res:
-                    gridcell = "C" + str(cl_col) + ":R" + str(cl_row)
+    return cm_count_to_vals
+
+
+def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
+    "write grids row by row"
+
+    make_dict_nparr = lambda: defaultdict(lambda: np.full((cols,), -9999, dtype=np.float))
+
+    output_grids = {
+        "Yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}
+    }
+
+    # skip this part if we write just a nodata line
+    insert_nodata_row = False
+    if row in row_col_data:
+        no_data_cols = 0
+        for col in xrange(0, ncols):
+            if col in row_col_data[row]:
+                rcd_val = row_col_data[row][col]
+                if rcd_val == -9999:
+                    no_data_cols += 1
+                    continue
                 else:
-                    gridcell = "C" + str(s_col) + ":R" + str(s_row)
+                    for cm_count, data in rcd_val.iteritems():
+                            for key, val in output_grids.iteritems():
+                                data_vals = [v.get(key, -9999) for v in data]
+                                if len(data_vals) > 0:
+                                    val["data"][(cm_count, data["Crop"])][col] = sum(data_vals) / len(data_vals)
+                                else:
+                                    no_data_cols += 1
 
-                out.append([
-                    gridcell,
-                    period,
-                    gcm,
-                    year,
-                    vals.get("Yield", "nan") / 1000.0 if "Yield" in vals else "nan",
-                    vals.get("Biom-ma", "nan") / 1000.0 if "Biom-ma" in vals else "nan",
-                    vals.get("CumET", "nan"),
-                    "nan", #PAR
-                    vals.get("MaxLAI", "nan"),
-                    vals.get("AntDOY", "nan"),
-                    vals.get("MatDOY", "nan"),
-                    vals.get("SOC-top", "nan"),
-                    vals.get("SOC-profile", "nan"),
-                    vals.get("NEE", "nan") / 10.0 if "NEE" in vals else "nan",
-                    vals.get("NPP", "nan") / 10.0 if "NPP" in vals else "nan",
-                    vals.get("N2O-crop", "nan"),
-                    vals.get("N2O-year", "nan"),
-                    vals.get("NLeach-year", "nan"),
-                    vals.get("NLeach-crop", "nan"),
-                    vals.get("WDrain-year", "nan"),
-                    vals.get("WDrain-crop", "nan"),
-                    vals.get("RootDep", "nan") / 10.0 if "RootDep" in vals else "nan",
-                    #vals.get("OrgBiom", "nan") #for debugging purposes
-                    #vals.get("Precip-crop", "nan"),
-                    #vals.get("Precip-year", "nan"),
-                ])
-    else:
-        with open("error.txt", "a") as _:
-            _.write("climate: " + str(cl_res) + "/(" + str(cl_row) + "," + str(cl_col) + "), soil: " + str(s_res) + "/(" + str(s_row) + "," + str(s_col) + "), crop_id: " + crop_id + " period: " + period + " gcm: " + gcm + "\n")
-            #_.write(json.dumps(result))
+        insert_nodata_row = no_data_cols == ncols
 
-    return out
+    for key, y2d_ in output_grids.iteritems():
 
+        y2d = y2c2d_["data"]
+        cast_to = y2d_["cast-to"]
+        digits = y2d_["digits"]
+        if cast_to == "int":
+            mold = lambda x: str(int(x))
+        else:
+            mold = lambda x: str(round(x, digits))
 
-#+"Stage,HeatRed,RelDev,"\
-HEADER = \
-    "gridcell," \
-    "Period," \
-    "gcp_rcp," \
-    "year," \
-    "Yield (t DM/ha)," \
-    "Total above ground biomass (t DM/ha)," \
-    "Total ET over the growing season (mm/growing season)," \
-    "Total intercepted PAR over the growing season (MJ/ha/growing season)," \
-    "Maximum LAI during the growing season (m2/m2)," \
-    "Anthesis date (DOY)," \
-    "Maturity date (DOY)," \
-    "SOC at sowing date 20 cm or 30 cm (gC/m2)," \
-    "SOC at sowing date at 1.5 m (gC/m2)," \
-    "Total net ecosystem exchange over the growing season (gC/m2/growing season)," \
-    "Total net primary productivity over the growing season (gC/m2/growing season)," \
-    "Total N20 over the growing season (kg N/ha/growing season)," \
-    "Total annual N20 (kg N/ha/year)," \
-    "Total annual N leaching over 1.5 m (kg N/ha/year)," \
-    "Total N leaching over the growing season over 1.5 m (kg N/ha/growing season)," \
-    "Total annual water loss below 1.5 m (mm/ha/year)," \
-    "Total water loss below 1.5 m over the growing season (mm/ha/growing season)," \
-    "Maximum rooted soil depth (m)" \
-    "\n"
+        for (cm_count, crop), row_arr in y2d.iteritems():
+            
+            crop = crop.replace("/", "").replace(" ", "")
+            path_to_file = path_to_output_dir + crop + "_" + key + "_" + str(cm_count) + ".asc"
 
+            if not os.path.isfile(path_to_file):
+                with open(path_to_file, "w") as _:
+                    _.write(header)
 
-#overwrite_list = set()
-def write_data(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution, data):
-    "write data"
+            with open(path_to_file, "a") as _:
 
-    path_to_file = "out/" + crop_id + "_" + production_situation + "_P" + period + "_GRP" + grcp + "_c" + str(climate_resolution) + "xs" + str(soil_resolution) + ".csv"
+                if insert_nodata_row:
+                    rowstr = " ".join(map(lambda x: "-9999", row_template))
+                    _.write(rowstr +  "\n")
 
-    if not os.path.isfile(path_to_file):# or (row, col) not in overwrite_list:
-        with open(path_to_file, "w") as _:
-            _.write(HEADER)
-        #overwrite_list.add((row, col))
-
-    with open(path_to_file, 'ab') as _:
-        writer = csv.writer(_, delimiter=",")
-        for row_ in data[(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution)]:
-            writer.writerow(row_)
-        data[(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution)] = []
-
-
+                rowstr = " ".join(map(lambda x: "-9999" if int(x) == -9999 else mold(x), row_arr))
+                _.write(rowstr +  "\n")
+    
+    if row in row_col_data:
+        del row_col_data[row]
 
 
 def main():
     "collect data from workers"
 
+    config = {
+        "user": "xps15",
+        "port": "7777",
+        "no-data-port": "5555",
+        "server": "cluster2", 
+        "start-row": "0"
+        #"end-row": "8157"
+    }
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            k,v = arg.split("=")
+            if k in config:
+                config[k] = v
+
+    paths = PATHS[config["user"]]
+
     data = defaultdict(list)
 
-    i = 1
+    received_env_count = 1
     context = zmq.Context()
     socket = context.socket(zmq.PULL)
+    socket.connect("tcp://localhost:" + config["no-data-port"])
+
     if LOCAL_RUN:
-        socket.connect("tcp://localhost:7777")
+        socket.connect("tcp://localhost:" + config["port"])
     else:
-        socket.connect("tcp://cluster2:7777")
+        socket.connect("tcp://" + config["server"] + ":" + config["port"])
     socket.RCVTIMEO = 1000
     leave = False
     write_normal_output_files = False
-    start_writing_lines_threshold = 270
+
+    if not write_normal_output_files:  
+        print("loading template for output...")
+        #template_grid = create_template_grid(PATHS[USER]["LOCAL_PATH_TO_ARCHIV"] + "Soil/Carbiocial_Soil_Raster_final.asc", n_rows, n_cols)
+        #datacells_per_row = np.sum(template_grid, axis=1) #.tolist()
+        print("load complete")
+
+        config_received = False
+        while not config_received:
+            try:
+                msg = socket.recv_json()
+                config_received = True
+            except:
+                continue
+            
+        nrows = int(msg["nrows"])
+        ncols = int(msg["ncols"])
+        cellsize = int(msg["cellsize"])
+        xllcorner = int(msg["xllcorner"])
+        yllcorner = int(msg["yllcorner"])
+        no_data = int(msg["no-data"])
+
+        header = "ncols\t\t" + str(ncols) + "\n" \
+                 "nrows\t\t" + str(nrows) + "\n" \
+                 "xllcorner\t" + str(xllcorner) + "\n" \
+                 "yllcorner\t" + str(yllcorner) + "\n" \
+                 "cellsize\t" + str(cellsize) + "\n" \
+                 "NODATA_value\t" + str(no_data) + "\n"
+
+        data = {
+            "row-col-data": defaultdict(lambda: defaultdict(list)),
+            "datacell-count": defaultdict(lambda: ncols), 
+            "next-row": int(config["start-row"])
+        }
+
+        #debug_file = open("debug.out", "w")
+
+
     while not leave:
 
         try:
-            #result = socket.recv_json()
             result = socket.recv_json(encoding="latin-1")
-            #result = socket.recv_string(encoding="latin-1")
-            #result = socket.recv_string()
-            #print result
-            #with open("out/out-latin1.csv", "w") as _:
-            #    _.write(result)
-            #continue
         except:
-            for crop_id, production_situation, period, grcp, climate_resolution, soil_resolution in data.keys():
-                if len(data[(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution)]) > 0:
-                    write_data(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution, data)
             continue
 
         if result["type"] == "finish":
@@ -203,46 +231,49 @@ def main():
             leave = True
 
         elif not write_normal_output_files:
-            print "received work result ", i, " customId: ", result.get("customId", "")
-
             custom_id = result["customId"]
             ci_parts = custom_id.split("|")
-            crop_id = ci_parts[0]
-            climate_resolution = int(ci_parts[1])
-            cl_row_, cl_col_ = ci_parts[2][1:-1].split("/")
-            cl_row, cl_col = (int(cl_row_), int(cl_col_))
-            soil_resolution = int(ci_parts[3])
-            s_row_, s_col_ = ci_parts[4][1:-1].split("/")
-            s_row, s_col = (int(s_row_), int(s_col_))
-            period = ci_parts[5]
-            grcp = ci_parts[6]
-            gcm = ci_parts[7]
-            production_situation = ci_parts[8]
+            resolution = int(ci_parts[0])
+            row = int(ci_parts[1])
+            col = int(ci_parts[2])
 
-            res = create_output(climate_resolution, cl_row, cl_col, soil_resolution, s_row, s_col, crop_id, period, gcm, result)
-            data[(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution)].extend(res)
+            if "data" in result:
+                debug_msg = "received work result " + str(received_env_count) + " customId: " + result.get("customId", "") \
+                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
+                #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
+                print debug_msg
+                #debug_file.write(debug_msg + "\n")
 
-            if len(data[(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution)]) >= start_writing_lines_threshold:
-                write_data(crop_id, production_situation, period, grcp, climate_resolution, soil_resolution, data)
+                #data["row-col-data"][row][col] = create_output(result)
+                data["row-col-data"][row][col].append(create_output(result))
+            else:
+                debug_msg = "received no-data result customId: " + result.get("customId", "") \
+                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
+                print debug_msg
+                data["row-col-data"][row][col] = -9999
 
-            i = i + 1
+            data["datacell-count"][row] -= 1
+
+            while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
+                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
+                debug_msg = "wrote " + rotation + " row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
+                print debug_msg
+                #debug_file.write(debug_msg + "\n")
+                data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 
+                
+                data["next-row"] += 1 # move to next row (to be written)
+
+            received_env_count = received_env_count + 1
 
         elif write_normal_output_files:
-            print "received work result ", i, " customId: ", result.get("customId", "")
+            print "received work result ", received_env_count, " customId: ", result.get("customId", "")
 
             custom_id = result["customId"]
             ci_parts = custom_id.split("|")
-            crop_id = ci_parts[0]
-            climate_resolution = ci_parts[1]
-            cl_row_, cl_col_ = ci_parts[2][1:-1].split("/")
-            soil_resolution = ci_parts[3]
-            s_row_, s_col_ = ci_parts[4][1:-1].split("/")
-            period = ci_parts[5]
-            grcp = ci_parts[6]
-            production_situation = ci_parts[8]
-            file_name = crop_id + "_" + production_situation + "_P" + period + "_GRP" + grcp + "_cr" + climate_resolution + "c"+ cl_col_ + "r"+ cl_row_ + "xsr" + soil_resolution + "c"+ s_col_ + "r"+ s_row_
+            resolution = int(ci_parts[0])
+            row = int(ci_parts[1])
+            col = int(ci_parts[2])
             
-
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
             with open("out/out-" + file_name + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
@@ -265,8 +296,9 @@ def main():
 
                     writer.writerow([])
 
-            i = i + 1
+            received_env_count = received_env_count + 1
 
+    #debug_file.close()
 
 main()
 

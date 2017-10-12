@@ -26,17 +26,14 @@
 		},
 
 		"events": [
-			"daily", ["Date", "Crop", "Stage", "AbBiom", "Yield"],
 
-			"2016-02-08", ["Date", "Stage", "AbBiom", ["OrgBiom", "Leaf"], ["OrgBiom", "Shoot"], ["OrgBiom", "Fruit"], ["OrgBiom", "Root"]],
+			"crop", [
+				["Crop", "FIRST"],
+				["CM-count", "FIRST"],
+				["Year", "LAST"],
+				["Yield", "LAST"]
+			]
 
-			"2016-05-02", ["Date", "Stage", "AbBiom", ["OrgBiom", "Leaf"], ["OrgBiom", "Shoot"], ["OrgBiom", "Fruit"], ["OrgBiom", "Root"]],
-
-			"2016-05-19", ["Date", "Stage", "AbBiom", ["OrgBiom", "Leaf"], ["OrgBiom", "Shoot"], ["OrgBiom", "Fruit"], ["OrgBiom", "Root"]],
-
-			"2016-05-27", ["Date", "Stage", "AbBiom", ["OrgBiom", "Leaf"], ["OrgBiom", "Shoot"], ["OrgBiom", "Fruit"], ["OrgBiom", "Root"]],
-
-			"2016-07-01", ["Date", "Stage", "AbBiom", ["OrgBiom", "Leaf"], ["OrgBiom", "Shoot"], ["OrgBiom", "Fruit"], ["OrgBiom", "Root"]]
 		]
 	},
 
