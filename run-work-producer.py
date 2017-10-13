@@ -98,96 +98,60 @@ def main():
     #sim["include-file-base-path"] = PATHS[USER]["INCLUDE_FILE_BASE_PATH"]
 
     cdict = {}
-    def create_interpolator(path_to_file, wgs84, gk5):
+    def create_interpolator(path_to_file_lat_lon_coordinates, path_to_data_no_data, wgs84, gk5):
         "read an ascii grid into a map, without the no-data values"
-        with open(path_to_file) as file_:
-            # skip headerlines
-            file_.next()
-            file_.next()
+        lat_lon_f = open(path_to_file_lat_lon_coordinates)
+        # skip 2 headerlines
+        lat_lon_f.next()
+        lat_lon_f.next()
 
-            crows = 938
-            ccols = 720
+        no_data_f = open(path_to_data_no_data)
+        # skip 3 headerlines
+        no_data_f.next()
+        no_data_f.next()
+        no_data_f.next()
 
-            points = np.zeros((ccols*crows, 2), np.int32)
-            values = np.zeros((ccols*crows), np.int32)
+        crows = 938
+        ccols = 720
 
-            i = -1
-            row = -1
-            for line in file_:
-                row += 1
-                col = -1
+        points = []
+        values = []
 
-                for col_str in line.strip().split(" "):
-                    col += 1
-                    i += 1
-                    clat, clon = col_str.split("|")
-                    cdict[(row, col)] = (clat, clon)
-                    cr, ch = transform(wgs84, gk5, clon, clat)
-                    points[i, 0] = ch
-                    points[i, 1] = cr
-                    values[i] = 1000 * row + col
-                    #print "row:", row, "col:", col, "clat:", clat, "clon:", clon, "h:", h, "r:", r, "val:", values[i]
+        i = 0
+        for row, ll_line in enumerate(lat_lon_f):
+            col_ll_strs = ll_line.strip().split(" ")
 
-            return NearestNDInterpolator(points, values)
+            nd_line = no_data_f.next()
+            col_nd_strs = nd_line.strip().split(" ")
+
+            for col, col_ll_str in enumerate(col_ll_strs):
+                if col_nd_strs[col] == "-":
+                    continue
+                
+                clat, clon = col_ll_str.split("|")
+                cdict[(row, col)] = (clat, clon)
+                cr, ch = transform(wgs84, gk5, clon, clat)
+                points.append([ch, cr])
+                values.append(1000 * row + col)
+                #print "row:", row, "col:", col, "clat:", clat, "clon:", clon, "h:", h, "r:", r, "val:", values[i]
+
+                i += 1
+
+        lat_lon_f.close()
+        no_data_f.close()
+
+        return NearestNDInterpolator(np.array(points), np.array(values))
 
 
     wgs84 = Proj(init="epsg:4326")
     #gk3 = Proj(init="epsg:31467")
     gk5 = Proj(init="epsg:31469")
 
-    interpol = create_interpolator(paths["path-to-climate-csvs-dir"] + "germany-lat-lon-coordinates.grid", wgs84, gk5)
-
-    def read_ascii_grid_into_numpy_array(path_to_file, no_of_headerlines=6, \
-    extract_fn=lambda s: int(s), np_dtype=np.int32, nodata_value=-9999):
-        "read an ascii grid into a map, without the no-data values"
-        with open(path_to_file) as file_:
-            nrows = 0
-            ncols = 0
-            row = -1
-            arr = None
-            skip_count = 0
-            for line in file_:
-                if skip_count < no_of_headerlines:
-                    skip_count += 1
-                    sline = line.split(sep=" ")
-                    if len(sline) > 1:
-                        key = sline[0].strip().upper()
-                        if key == "NCOLS":
-                            ncols = int(sline[1].strip())
-                        elif key == "NROWS":
-                            nrows = int(sline[1].strip())
-
-                if skip_count == no_of_headerlines:
-                    arr = np.full((nrows, ncols), nodata_value, dtype=np_dtype)
-
-                row += 1
-                col = -1
-                for col_str in line.strip().split(" "):
-                    col += 1
-                    if int(col_str) == -9999:
-                        continue
-                    arr[row, col] = extract_fn(col_str)
-
-            return arr
-
-    #soil_ids = read_ascii_grid_into_numpy_array(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc")
-
-    #germany_dwd_lats = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-lat-lon-coordinates.grid", 2, \
-    #lambda s: float(s.split("|")[0]), np_dtype=np.float)
-
-    #germany_dwd_nodata = read_ascii_grid_into_numpy_array(paths["path-to-climate-csvs-dir"] + "germany-data-no-data.grid", 2, \
-    #lambda s: 0 if s == "-" else 1)
-    
-
-    def update_soil(soil_res, row, col, crop_id):
-        "update function"
-
-        crop["cropRotation"][2] = crop_id
-
-        site["SiteParameters"]["SoilProfileParameters"] = soil_io.soil_parameters(soil_db_con, soil_ids[row, col])
-
-        #print site["SiteParameters"]["SoilProfileParameters"]
-
+    s = time.clock()
+    interpol = create_interpolator(paths["path-to-climate-csvs-dir"] + "germany-lat-lon-coordinates.grid", \
+    paths["path-to-climate-csvs-dir"] + "germany-data-no-data.grid", wgs84, gk5)
+    e = time.clock()
+    print (e-s), "s"
 
     sent_env_count = 1
     start_time = time.clock()
@@ -230,7 +194,7 @@ def main():
             "no-data": -9999
         })
 
-        for srow in xrange(0, srows, resolution):
+        for srow in xrange(0, vrows*resolution, resolution):
 
             #virtual row
             vrow = srow // resolution
@@ -240,7 +204,7 @@ def main():
             for k in xrange(0, resolution):
                 lines[k] = np.fromstring(soil_f.readline(), dtype=int, sep=" ")
 
-            for scol in xrange(0, scols, resolution):
+            for scol in xrange(0, vcols*resolution, resolution):
 
                 unique_jobs = defaultdict(lambda: 0)
 
@@ -259,7 +223,7 @@ def main():
                             continue
                         
                         #get coordinate of clostest climate element of real soil-cell
-                        sh = yllcorner + (scellsize / 2) + (srows - row) * scellsize
+                        sh = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
                         sr = xllcorner + (scellsize / 2) + col * scellsize
                         #inter = crow/ccol encoded into integer
                         inter = interpol(sh, sr)
@@ -294,9 +258,9 @@ def main():
                     env["csvViaHeaderOptions"] = sim["climate.csv-options"]
 
                     if LOCAL_RUN:
-                        env["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        env["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "germany/row-" + str(crow+1) + "/col-" + str(ccol) + ".csv"
                     else:
-                        env["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "germany/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        env["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "germany/row-" + str(crow+1) + "/col-" + str(ccol) + ".csv"
 
 
                     env["customId"] = str(resolution) \
@@ -306,7 +270,7 @@ def main():
                     #with open("envs/env-"+str(i)+".json", "w") as _:
                     #    _.write(json.dumps(env))
 
-                    #socket.send_json(env)
+                    socket.send_json(env)
                     print "sent env ", sent_env_count, " customId: ", env["customId"]
                     #exit()
                     sent_env_count += 1

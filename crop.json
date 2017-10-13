@@ -34,66 +34,29 @@
 	"cropRotation": [
 		{
 			"worksteps": [
-				{ "date": "2014-10-07", "type": "Seed", "crop": ["ref", "crops", "WW"] },
+				{ "date": "0000-09-23", "type": "Sowing", "crop": ["ref", "crops", "WR"] },
 				{
-					"date": "2015-03-23",
-					"type": "MineralFertiliserApplication",
-					"amount": [80.0, "kg N"],
+					"date": "0001-05-05",
+					"type": "Irrigation",
+					"amount": [1.0, "mm"],
+					"parameters": {
+						"nitrateConcentration": [0.0, "mg dm-3"],
+						"sulfateConcentration": [334, "mg dm-3"]
+					}
+				},
+				{
+					"date": "0001-04-03",
+					"type": "MineralFertilization",
+					"amount": [40.0, "kg N"],
 					"partition": ["ref", "fert-params", "AN"]
 				},
 				{
-					"date": "2015-04-22",
-					"type": "MineralFertiliserApplication",
-					"amount": [80.0, "kg N"],
-					"partition": ["ref", "fert-params", "U"]
-				},
-				{ "date": "2015-08-14", "type": "Harvest"}
-			]
-		},
-		{
-			"worksteps": [
-				{ "date": "2015-08-26", "type": "Seed", "crop": ["ref", "crops", "WR"] },
-				{	
-					"date": "2015-09-03",
-					"type": "MineralFertiliserApplication",
-					"amount": [30.0, "kg N"],
+					"date": "0001-05-07",
+					"type": "MineralFertilization",
+					"amount": [40.0, "kg N"],
 					"partition": ["ref", "fert-params", "AN"]
 				},
-				{
-					"date": "2016-03-01",
-					"type": "MineralFertiliserApplication",
-					"amount": [80.0, "kg N"],
-					"partition": ["ref", "fert-params", "U"]
-				},
-				{	
-					"date": "2016-04-06",
-					"type": "MineralFertiliserApplication",
-					"amount": [60.0, "kg N"],
-					"partition": ["ref", "fert-params", "AN"]
-				},
-				{ "date": "2016-07-28", "type": "Harvest"}
-			]
-		}
-
-	],
-
-	"2 cropRotation": [
-		{
-			"worksteps": [
-				{ "date": "2014-10-07", "type": "Seed", "crop": ["ref", "crops", "WW"] },
-				{ "date": "2015-03-19", "type": "Harvest", "exported": false }
-			]
-		},
-		{
-			"worksteps": [
-				{
-					"date": "2015-04-29",
-					"type": "MineralFertiliserApplication",
-					"amount": [160.0, "kg N"],
-					"partition": ["ref", "fert-params", "U"]
-				},
-				{ "date": "2015-04-29", "type": "Seed", "crop": ["ref", "crops", "SM"] },
-				{ "date": "2015-09-25", "type": "Harvest"}
+				{ "date": "0001-07-27", "type": "Harvest" }
 			]
 		}
 	],

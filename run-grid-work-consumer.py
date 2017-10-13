@@ -35,7 +35,7 @@ print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version(
 import monica_io
 #print "path to monica_io: ", monica_io.__file__
 
-LOCAL_RUN = True #False
+LOCAL_RUN = False
 
 PATHS = {
     "lc": {
@@ -106,7 +106,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                     no_data_cols += 1
                     continue
                 else:
-                    for cm_count, data in rcd_val.iteritems():
+                    for cm_count, data in rcd_val:
                             for key, val in output_grids.iteritems():
                                 data_vals = [v.get(key, -9999) for v in data]
                                 if len(data_vals) > 0:
