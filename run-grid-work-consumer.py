@@ -28,6 +28,7 @@ import os
 import json
 from datetime import datetime
 from collections import defaultdict, OrderedDict
+import numpy as np
 
 import zmq
 print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
@@ -89,11 +90,13 @@ def create_output(result):
 def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     "write grids row by row"
 
-    make_dict_nparr = lambda: defaultdict(lambda: np.full((cols,), -9999, dtype=np.float))
+    make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
         "Yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}
     }
+
+    cmc_to_crop = {}
 
     # skip this part if we write just a nodata line
     insert_nodata_row = False
@@ -106,19 +109,29 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                     no_data_cols += 1
                     continue
                 else:
-                    for cm_count, data in rcd_val:
+                    cmc_and_year_to_vals = defaultdict(lambda: defaultdict(list))
+                    for cell_data in rcd_val:
+                        for cm_count, data in cell_data.iteritems():
                             for key, val in output_grids.iteritems():
-                                data_vals = [v.get(key, -9999) for v in data]
-                                if len(data_vals) > 0:
-                                    val["data"][(cm_count, data["Crop"])][col] = sum(data_vals) / len(data_vals)
-                                else:
-                                    no_data_cols += 1
+                                if cm_count not in cmc_to_crop:
+                                    cmc_to_crop[cm_count] = data["Crop"]
+
+                                cmc_and_year_to_vals[(cm_count, data["Year"])][key].append(data[key])
+
+                    for (cm_count, year), key_to_vals in cmc_and_year_to_vals.iteritems():
+                        for key, vals in key_to_vals.iteritems():
+                            output_vals = output_grids[key]["data"]
+                            if len(vals) > 0:
+                                output_vals[(cm_count, year)][col] = sum(vals) / len(vals)
+                            else:
+                                output_vals[(cm_count, year)][col] = -9999
+                                #no_data_cols += 1
 
         insert_nodata_row = no_data_cols == ncols
 
     for key, y2d_ in output_grids.iteritems():
 
-        y2d = y2c2d_["data"]
+        y2d = y2d_["data"]
         cast_to = y2d_["cast-to"]
         digits = y2d_["digits"]
         if cast_to == "int":
@@ -126,10 +139,11 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         else:
             mold = lambda x: str(round(x, digits))
 
-        for (cm_count, crop), row_arr in y2d.iteritems():
-            
+        for (cm_count, year), row_arr in y2d.iteritems():
+
+            crop = cmc_to_crop[cm_count]    
             crop = crop.replace("/", "").replace(" ", "")
-            path_to_file = path_to_output_dir + crop + "_" + key + "_" + str(cm_count) + ".asc"
+            path_to_file = path_to_output_dir + crop + "_" + key + "_" + str(year) + "_" + str(cm_count) + ".asc"
 
             if not os.path.isfile(path_to_file):
                 with open(path_to_file, "w") as _:
@@ -212,7 +226,8 @@ def main():
 
         data = {
             "row-col-data": defaultdict(lambda: defaultdict(list)),
-            "datacell-count": defaultdict(lambda: ncols), 
+            "datacell-count": defaultdict(lambda: ncols),
+            "datacell-col-count": defaultdict(lambda: defaultdict(lambda: -1)),
             "next-row": int(config["start-row"])
         }
 
@@ -246,17 +261,24 @@ def main():
 
                 #data["row-col-data"][row][col] = create_output(result)
                 data["row-col-data"][row][col].append(create_output(result))
-            else:
+            else if result.get("type", "") == "data-count":
+                debug_msg = "received data-count result customId: " + result.get("customId", "") \
+                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
+                print debug_msg
+                data["datacell-col-count"][row][col] += result.get("jobs-per-cell", 0) + 1
+            else if result.get("type", "") == "no-data":
                 debug_msg = "received no-data result customId: " + result.get("customId", "") \
                 + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 print debug_msg
                 data["row-col-data"][row][col] = -9999
 
-            data["datacell-count"][row] -= 1
+            data["datacell-col-count"][row][col] -= 1
+            if data["datacell-col-count"][row][col] == 0:
+                data["datacell-count"][row] -= 1
 
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
                 write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
-                debug_msg = "wrote " + rotation + " row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
+                debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
                 print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 

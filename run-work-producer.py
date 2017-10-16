@@ -199,7 +199,7 @@ def main():
             #virtual row
             vrow = srow // resolution
 
-            print "srow:", srow, "vrow:", vrow
+            #print "srow:", srow, "vrow:", vrow
 
             for k in xrange(0, resolution):
                 lines[k] = np.fromstring(soil_f.readline(), dtype=int, sep=" ")
@@ -210,7 +210,7 @@ def main():
 
                 #virtual col
                 vcol = scol // resolution
-                print "scol:", scol, "vcol:", vcol
+                #print "scol:", scol, "vcol:", vcol
 
                 full_no_data_block = True
                 for line_idx, line in enumerate(lines):
