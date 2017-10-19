@@ -64,9 +64,9 @@ def main():
         "user": "xps15",
         "port": "6666",
         "no-data-port": "5555",
-        "server": "cluster2"#,
-        #"start-row": "1",
-        #"end-row": "8157"
+        "server": "cluster2",
+        "start-row": "0",
+        "end-row": "-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -194,6 +194,8 @@ def main():
             "no-data": -9999
         })
 
+        unknown_soil_ids = set()
+
         for srow in xrange(0, vrows*resolution, resolution):
 
             #virtual row
@@ -203,6 +205,11 @@ def main():
 
             for k in xrange(0, resolution):
                 lines[k] = np.fromstring(soil_f.readline(), dtype=int, sep=" ")
+
+            if vrow < int(config["start-row"]):
+                continue
+            elif int(config["end-row"]) > 0 and vrow > int(config["end-row"]):
+                break
 
             for scol in xrange(0, vcols*resolution, resolution):
 
@@ -221,6 +228,10 @@ def main():
                         soil_id = line[col]
                         if soil_id == -9999:
                             continue
+                        if soil_id < 1 or soil_id > 71:
+                            print "row/col:", row, "/", col, "has unknown soil_id:", soil_id
+                            unknown_soil_ids.add(soil_id)
+                            continue
                         
                         #get coordinate of clostest climate element of real soil-cell
                         sh = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
@@ -235,9 +246,15 @@ def main():
                 if full_no_data_block:
                     config_and_no_data_socket.send_json({
                         "type": "no-data",
-                        "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol)
+                        "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
                     })
                     continue
+                else:
+                    config_and_no_data_socket.send_json({
+                        "type": "jobs-per-cell",
+                        "count": len(unique_jobs),
+                        "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
+                    })
 
                 for (inter, soil_id), job in unique_jobs.iteritems():
                     
@@ -264,8 +281,9 @@ def main():
 
 
                     env["customId"] = str(resolution) \
-                    + "|" + str(vrow) + "|" + str(vcol) #\
-                    #+ "|(" + str(crow) + "/" + str(ccol) + ")"
+                    + "|" + str(vrow) + "|" + str(vcol) \
+                    + "|" + str(crow) + "|" + str(ccol) \
+                    + "|" + str(soil_id)
 
                     #with open("envs/env-"+str(i)+".json", "w") as _:
                     #    _.write(json.dumps(env))
@@ -274,6 +292,8 @@ def main():
                     print "sent env ", sent_env_count, " customId: ", env["customId"]
                     #exit()
                     sent_env_count += 1
+
+        print "unknown_soil_ids:", unknown_soil_ids
 
     stop_time = time.clock()
 

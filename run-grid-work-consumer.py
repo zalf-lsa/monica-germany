@@ -157,6 +157,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
                 rowstr = " ".join(map(lambda x: "-9999" if int(x) == -9999 else mold(x), row_arr))
                 _.write(rowstr +  "\n")
+
     
     if row in row_col_data:
         del row_col_data[row]
@@ -170,8 +171,8 @@ def main():
         "port": "7777",
         "no-data-port": "5555",
         "server": "cluster2", 
-        "start-row": "0"
-        #"end-row": "8157"
+        "start-row": "0",
+        "end-row": "-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -227,11 +228,11 @@ def main():
         data = {
             "row-col-data": defaultdict(lambda: defaultdict(list)),
             "datacell-count": defaultdict(lambda: ncols),
-            "datacell-col-count": defaultdict(lambda: defaultdict(lambda: -1)),
+            "jobs-per-cell-count": defaultdict(lambda: defaultdict(lambda: -1)),
             "next-row": int(config["start-row"])
         }
 
-        #debug_file = open("debug.out", "w")
+        debug_file = open("debug.out", "w")
 
 
     while not leave:
@@ -251,29 +252,37 @@ def main():
             resolution = int(ci_parts[0])
             row = int(ci_parts[1])
             col = int(ci_parts[2])
+            crow = int(ci_parts[3])
+            ccol = int(ci_parts[4])
+            soil_id = int(ci_parts[5])
 
-            if "data" in result:
+            if result.get("type", "") == "jobs-per-cell":
+                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + result.get("customId", "") \
+                + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
+                + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
+                #print debug_msg
+                #debug_file.write(debug_msg + "\n")
+                data["jobs-per-cell-count"][row][col] += 1 + result["count"]
+                print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
+            elif result.get("type", "") == "no-data":
+                debug_msg = "received no-data message customId: " + result.get("customId", "") \
+                + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
+                + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
+                #print debug_msg
+                #debug_file.write(debug_msg + "\n")
+                data["row-col-data"][row][col] = -9999
+                data["jobs-per-cell-count"][row][col] = 0
+            elif "data" in result:
                 debug_msg = "received work result " + str(received_env_count) + " customId: " + result.get("customId", "") \
-                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
+                + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
+                + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
                 #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
                 print debug_msg
                 #debug_file.write(debug_msg + "\n")
-
-                #data["row-col-data"][row][col] = create_output(result)
                 data["row-col-data"][row][col].append(create_output(result))
-            else if result.get("type", "") == "data-count":
-                debug_msg = "received data-count result customId: " + result.get("customId", "") \
-                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
-                print debug_msg
-                data["datacell-col-count"][row][col] += result.get("jobs-per-cell", 0) + 1
-            else if result.get("type", "") == "no-data":
-                debug_msg = "received no-data result customId: " + result.get("customId", "") \
-                + " next row: " + str(data["next-row"]) + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
-                print debug_msg
-                data["row-col-data"][row][col] = -9999
+                data["jobs-per-cell-count"][row][col] -= 1
 
-            data["datacell-col-count"][row][col] -= 1
-            if data["datacell-col-count"][row][col] == 0:
+            if data["jobs-per-cell-count"][row][col] == 0:
                 data["datacell-count"][row] -= 1
 
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
@@ -320,7 +329,7 @@ def main():
 
             received_env_count = received_env_count + 1
 
-    #debug_file.close()
+    debug_file.close()
 
 main()
 
