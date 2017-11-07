@@ -100,6 +100,7 @@ def main():
     cdict = {}
     def create_interpolator(path_to_file_lat_lon_coordinates, path_to_data_no_data, wgs84, gk5):
         "read an ascii grid into a map, without the no-data values"
+        
         lat_lon_f = open(path_to_file_lat_lon_coordinates)
         # skip 2 headerlines
         lat_lon_f.next()
@@ -144,7 +145,7 @@ def main():
 
 
     wgs84 = Proj(init="epsg:4326")
-    #gk3 = Proj(init="epsg:31467")
+    #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
     s = time.clock()
@@ -163,7 +164,7 @@ def main():
         scellsize = -1
         xllcorner = -1
         yllcorner = -1
-        for sent_env_count in range(0, 6):
+        for _ in range(0, 6):
             line = soil_f.readline()
             sline = [x for x in line.split(" ") if len(x) > 0]
             if len(sline) > 1:
