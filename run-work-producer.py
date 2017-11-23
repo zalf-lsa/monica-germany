@@ -217,7 +217,7 @@ def main():
         return NearestNDInterpolator(np.array(points), np.array(values))
 
     wgs84 = Proj(init="epsg:4326")
-    #gk3 = Proj(init="epsg:31467")
+    #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
     s = time.clock()
@@ -249,7 +249,7 @@ def main():
         scellsize = -1
         xllcorner = -1
         yllcorner = -1
-        for sent_env_count in range(0, 6):
+        for _ in range(0, 6):
             line = soil_f.readline()
             sline = [x for x in line.split() if len(x) > 0]
             if len(sline) > 1:
