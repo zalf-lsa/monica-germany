@@ -1,0 +1,88 @@
+  {
+	"crops": {
+		"SM": {
+			"is-winter-crop": false,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/fnr-voce/maize.json"],
+				"cultivar": ["include-from-file", "monica-parameters/crops/maize/silage-maize.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
+		},
+		"WR": {
+			"is-winter-crop": true,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/fnr-voce/rape.json"],
+				"cultivar": ["include-from-file", "monica-parameters/crops/rape/winter-rape.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/rape.json"]
+		},
+		"WW": {
+			"is-winter-crop": true,
+			"cropParams": {
+				"species": ["include-from-file", "monica-parameters/projects/sustag/wheat.json"],
+				"cultivar": ["include-from-file", "monica-parameters/projects/sustag/winter-wheat.json"]
+			},
+			"residueParams": ["include-from-file", "monica-parameters/crop-residues/wheat.json"]
+		}
+	},
+	
+	"fert-params": {
+		"AN": ["include-from-file", "monica-parameters/mineral-fertilisers/AN.json"],
+		"U": ["include-from-file", "monica-parameters/mineral-fertilisers/U.json"]
+	}, 
+
+	"1 cropRotation": [
+		{
+			"worksteps": [
+				{ "date": "0000-09-23", "type": "Sowing", "crop": ["ref", "crops", "WW"] },
+				{
+					"date": "0001-05-05",
+					"type": "Irrigation",
+					"amount": [1.0, "mm"],
+					"parameters": {
+						"nitrateConcentration": [0.0, "mg dm-3"],
+						"sulfateConcentration": [334, "mg dm-3"]
+					}
+				},
+				{
+					"date": "0001-04-03",
+					"type": "MineralFertilization",
+					"amount": [40.0, "kg N"],
+					"partition": ["ref", "fert-params", "AN"]
+				},
+				{
+					"date": "0001-05-07",
+					"type": "MineralFertilization",
+					"amount": [40.0, "kg N"],
+					"partition": ["ref", "fert-params", "AN"]
+				},
+				{ "date": "0001-07-27", "type": "Harvest" }
+			]
+		}
+	],
+
+	"cropRotation": [
+		{
+			"worksteps": [
+				{ 
+					"date": "0000-10-11", 
+					"type": "Sowing", 
+					"crop": ["ref", "crops", "WW"] 
+				},
+				{ 
+					"type": "AutomaticHarvest", 
+					"latest-date": "0001-09-30",
+					"min-%-asw": 0,
+					"max-%-asw": 150,
+					"max-3d-precip-sum": 999,
+					"max-curr-day-precip": 999,
+					"harvest-time": "maturity"
+				}
+			]
+		}
+	],
+
+	
+
+	"CropParameters": ["include-from-file", "monica-parameters/general/crop.json"]
+}
