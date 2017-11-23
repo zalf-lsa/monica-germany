@@ -1,4 +1,5 @@
 .~lock.35_120_v1.csv#
 out.csv
 monica_io.pyc
-/out
+out*
+
