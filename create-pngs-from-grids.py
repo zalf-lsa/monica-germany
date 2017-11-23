@@ -4,6 +4,7 @@ import numpy as np
 from colour import Color
 import sys
 import os
+from collections import defaultdict
 
 
 
@@ -82,38 +83,36 @@ def create_png(config, path_to_file, write_legend_file=False):
 
 def create_avg_grid(path_to_dir):
 
-    acc_arr = None
-    avg_filename = ""
-    header = ""
-    init_acc = True
+    acc_arrs = defaultdict(lambda: {"arr": None, "count": 0, "filename": "", "header": ""})
+    arr_counts = {}
 
-    arr_count = 0
-    for filename in os.listdir(path_to_dir):
+    for filename in sorted(os.listdir(path_to_dir)):
         if filename[-3:] == "asc":
+            id = "_".join(filename.split("_")[:2])
             arr = np.loadtxt(path_to_dir + filename, skiprows=6)
 
-            if init_acc:
-                init_acc = False
-                acc_arr = np.full(arr.shape, 0.0, arr.dtype)
-                avg_filename = filename[:-4] + "_avg.asc"
+            if id not in acc_arrs:
+                acc_arrs[id]["arr"] = np.full(arr.shape, 0.0, arr.dtype)
+                acc_arrs[id]["filename"] = id + "_avg.asc"
                 with open(path_to_dir + filename) as _:
                     for i in range(6):
-                        header += _.readline()
+                        acc_arrs[id]["header"] += _.readline()
 
-            acc_arr += arr
-            arr_count += 1
+            acc_arrs[id]["arr"] += arr
+            acc_arrs[id]["count"] += 1
             print "added:", filename
 
 
-    acc_arr /= arr_count
-
-    np.savetxt(avg_filename, acc_arr, header=header, delimiter=" ", comments="", fmt="%i")
+    for id, acc_arr in acc_arrs.iteritems():
+        acc_arr["arr"] /= acc_arr["count"]
+        np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
+        print "wrote:", acc_arr["filename"]
 
 
 def main():
 
     config = {
-        "dir": "out/",
+        "dir": "out/", #"P:/monica-germany/landkreise-avgs/", #"out/",
         "file": "",
 
         "from-color": "red",
@@ -134,9 +133,8 @@ def main():
             if k in config:
                 config[k] = v
 
-    #create_avg_grid(config["dir"])
-
-    #exit()
+    create_avg_grid(config["dir"])
+    exit()
 
     for filename in os.listdir(config["dir"]):
         if (config["file"] and filename == config["file"]) \
