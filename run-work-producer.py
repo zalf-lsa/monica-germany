@@ -45,20 +45,20 @@ PATHS = {
     "berg-lc": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
         "path-to-soil-dir": "N:/soil/buek1000/brd/",
-        #"path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
-        "path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
+        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
-        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/"
-        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
+        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
     },
     "berg-xps15": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
         "path-to-soil-dir": "D:/soil/buek1000/brd/",
-        #"path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
-        "path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        "path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
+        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
-        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/"
-        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
+        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
     }
 }
 
@@ -104,53 +104,7 @@ def main():
     with open("crop.json") as _:
         crop_json = json.load(_)
 
-    #sim["include-file-base-path"] = PATHS[USER]["INCLUDE_FILE_BASE_PATH"]
 
-    cdict = {}
-    def create_climate_gk5_interpolator(path_to_file_lat_lon_coordinates, path_to_data_no_data, wgs84, gk5):
-        "create interpolator out of the lat/lon coordinates grid and a no-data map for the climate-data"
-        lat_lon_f = open(path_to_file_lat_lon_coordinates)
-        # skip 2 headerlines
-        lat_lon_f.next()
-        lat_lon_f.next()
-
-        no_data_f = open(path_to_data_no_data)
-        # skip 3 headerlines
-        no_data_f.next()
-        no_data_f.next()
-        no_data_f.next()
-
-        crows = 938
-        ccols = 720
-
-        points = []
-        values = []
-
-        i = 0
-        for row, ll_line in enumerate(lat_lon_f):
-            col_ll_strs = ll_line.strip().split(" ")
-
-            nd_line = no_data_f.next()
-            col_nd_strs = nd_line.strip().split(" ")
-
-            for col, col_ll_str in enumerate(col_ll_strs):
-                if col_nd_strs[col] == "-":
-                    continue
-                
-                clat, clon = col_ll_str.split("|")
-                cdict[(row, col)] = (clat, clon)
-                cr_gk5, ch_gk5 = transform(wgs84, gk5, clon, clat)
-                points.append([cr_gk5, ch_gk5])
-                values.append((row, col))
-                #print "row:", row, "col:", col, "clat:", clat, "clon:", clon, "h:", h, "r:", r, "val:", values[i]
-
-                i += 1
-
-        lat_lon_f.close()
-        no_data_f.close()
-
-        return NearestNDInterpolator(np.array(points), np.array(values))
-    
     def read_grid_meta_data(path_to_asc_file):
         with open(path_to_asc_file) as _:
             meta = {}
@@ -158,9 +112,10 @@ def main():
                 if index > 5: 
                     break
                 key, value = line.strip().split()
-                meta[key.strip()] = float(value.strip())
+                meta[key.strip().lower()] = float(value.strip())
             return meta
 
+    
     def create_dem_slope_gk5_interpolator(dem_grid, meta):
         "read an ascii grid into a map, without the no-data values"
 
@@ -192,40 +147,34 @@ def main():
     slope_grid = np.loadtxt(paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc", dtype=float, skiprows=6)
     dem_slope_gk5_interpolate = create_dem_slope_gk5_interpolator(dem_grid, dem_slope_metadata)
 
-    def create_climate_gk5_interpolator2(path_to_file_lat_lon_coordinates, wgs84, gk5):
-        "read an ascii grid into a map, without the no-data values"
-        lat_lon_f = open(path_to_file_lat_lon_coordinates)
 
-        json_dict = json.load(lat_lon_f)
+    cdict = {}
+    def create_climate_gk5_interpolator_from_json_file(path_to_latlon_to_rowcol_file, wgs84, gk5):
+        "create interpolator from json list of lat/lon to row/col mappings"
+        with open(path_to_latlon_to_rowcol_file) as _:
+            points = []
+            values = []
 
-        points = []
-        values = []
+            for latlon, rowcol in json.load(_):
+                row, col = rowcol
+                clat, clon = latlon
+                try:
+                    cr_gk5, ch_gk5 = transform(wgs84, gk5, clon, clat)
+                    cdict[(row, col)] = (round(clat, 4), round(clon, 4))
+                    points.append([cr_gk5, ch_gk5])
+                    values.append((row, col))
+                    #print "row:", row, "col:", col, "clat:", clat, "clon:", clon, "h:", h, "r:", r, "val:", values[i]
+                except:
+                    continue
 
-        for latlon, rowcol in json_dict["latlon-to-rowcol"]:
-            row, col = rowcol
-            clat, clon = latlon
-            try:
-                cr_gk5, ch_gk5 = transform(wgs84, gk5, clon, clat)
-                cdict[(row, col)] = (round(clat, 4), round(clon, 4))
-                points.append([cr_gk5, ch_gk5])
-                values.append((row, col))
-                #print "row:", row, "col:", col, "clat:", clat, "clon:", clon, "h:", h, "r:", r, "val:", values[i]
-            except:
-                continue
-        lat_lon_f.close()
-
-        return NearestNDInterpolator(np.array(points), np.array(values))
+            return NearestNDInterpolator(np.array(points), np.array(values))
 
     wgs84 = Proj(init="epsg:4326")
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
-    s = time.clock()
-    #climate_gk5_interpolate = create_climate_gk5_interpolator(paths["path-to-climate-csvs-dir"] + "../germany-lat-lon-coordinates.grid", \
-    #paths["path-to-climate-csvs-dir"] + "germany-data-no-data.grid", wgs84, gk5)
-    climate_gk5_interpolate = create_climate_gk5_interpolator2(paths["path-to-climate-csvs-dir"] + "../lat-lon.json", wgs84, gk5)
-    e = time.clock()
-    print (e-s), "s"
+    climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
+
 
     crops_ids = [
         "WW",
@@ -242,28 +191,16 @@ def main():
     sent_env_count = 1
     start_time = time.clock()
 
+    soil_meta = read_grid_meta_data(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc")
     with open(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc") as soil_f:
-
-        scols = -1
-        srows = -1
-        scellsize = -1
-        xllcorner = -1
-        yllcorner = -1
         for _ in range(0, 6):
-            line = soil_f.readline()
-            sline = [x for x in line.split() if len(x) > 0]
-            if len(sline) > 1:
-                key = sline[0].strip().upper()
-                if key == "NCOLS":
-                    scols = int(sline[1].strip())
-                elif key == "NROWS":
-                    srows = int(sline[1].strip())
-                elif key == "CELLSIZE":
-                    scellsize = int(sline[1].strip())
-                elif key == "YLLCORNER":
-                    yllcorner = int(sline[1].strip())
-                elif key == "XLLCORNER":
-                    xllcorner = int(sline[1].strip())
+            soil_f.readline()
+        
+        scols = int(soil_meta["ncols"])
+        srows = int(soil_meta["nrows"])
+        scellsize = int(soil_meta["cellsize"])
+        xllcorner = int(soil_meta["xllcorner"])
+        yllcorner = int(soil_meta["yllcorner"])
                     
         resolution = 20
         vrows = srows // resolution
@@ -281,7 +218,7 @@ def main():
             "no-data": -9999
         })
 
-        unknown_soil_ids = set()
+        #unknown_soil_ids = set()
 
         env_template = monica_io.create_env_json_from_json_config({
             "crop": crop_json,
@@ -346,7 +283,7 @@ def main():
                             heightNN = dem_grid[ds_row, ds_col]
                             slope = slope_grid[ds_row, ds_col]
                             
-                            unique_jobs[(crow, ccol, soil_id, heightNN, slope)] += 1
+                            unique_jobs[(crow, ccol, soil_id, int(round(heightNN/10.0)*10), int(round(slope)))] += 1
 
                             full_no_data_block = False
 
@@ -389,12 +326,11 @@ def main():
                         env_template["csvViaHeaderOptions"] = sim_json["climate.csv-options"]
 
                         if LOCAL_RUN:
-                            #env_template["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "row-" + str(crow+1) + "/col-" + str(ccol) + ".csv"
                             env_template["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "row-" + str(crow) + "/col-" + str(ccol) + ".csv"
                         else:
-                            #env_template["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "row-" + str(crow+1) + "/col-" + str(ccol) + ".csv"
                             env_template["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "row-" + str(crow) + "/col-" + str(ccol) + ".csv"
 
+                        #print env_template["pathToClimateCSV"]
 
                         env_template["customId"] = str(resolution) \
                         + "|" + str(vrow) + "|" + str(vcol) \
