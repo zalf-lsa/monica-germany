@@ -8,9 +8,7 @@
 		"_end-date": "2016-05-22",
 		"no-of-climate-file-header-lines": 2,
 		"csv-separator": ",",
-		"header-to-acd-names": {
-			"globrad": ["globrad", "*", 24]
-		}
+		"header-to-acd-names": {}
 	},
 	
 	"debug?": false,
