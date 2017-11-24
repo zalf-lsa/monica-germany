@@ -39,10 +39,10 @@ import monica_io
 LOCAL_RUN = False
 
 PATHS = {
-    "lc": {
+    "berg-lc": {
         "local-path-to-output-dir": "out/"
     },
-    "xps15": {
+    "berg-xps15": {
         "local-path-to-output-dir": "out/"
     }
 }
@@ -78,11 +78,15 @@ def create_output(result):
                     else:
                         vals[name] = val
 
-                if "CM-count" not in vals or "Crop" not in vals:
-                    print "Missing CM-count or Crop in result section. Skipping results section."
+                if "CM-count" not in vals:
+                    print "Missing CM-count in result section. Skipping results section."
                     continue
 
                 cm_count_to_vals[vals["CM-count"]].update(vals)
+
+    for cmc in sorted(cm_count_to_vals.keys()):
+        if "harvest-doy" not in cm_count_to_vals[cmc]:
+            del cm_count_to_vals[cmc] 
 
     return cm_count_to_vals
 
@@ -93,7 +97,20 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
-        "Yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}
+        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "total-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "may-to-harvest-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1}
     }
 
     cmc_to_crop = {}
@@ -116,7 +133,10 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                                 if cm_count not in cmc_to_crop:
                                     cmc_to_crop[cm_count] = data["Crop"]
 
-                                cmc_and_year_to_vals[(cm_count, data["Year"])][key].append(data[key])
+                                if key in data:
+                                    cmc_and_year_to_vals[(cm_count, data["Year"])][key].append(data[key])
+                                else:
+                                    cmc_and_year_to_vals[(cm_count, data["Year"])][key] #just make sure at least an empty list is in there
 
                     for (cm_count, year), key_to_vals in cmc_and_year_to_vals.iteritems():
                         for key, vals in key_to_vals.iteritems():
@@ -133,7 +153,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
         y2d = y2d_["data"]
         cast_to = y2d_["cast-to"]
-        digits = y2d_["digits"]
+        digits = y2d_.get("digits", 0)
         if cast_to == "int":
             mold = lambda x: str(int(x))
         else:
@@ -152,7 +172,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
             with open(path_to_file, "a") as _:
 
                 if insert_nodata_row:
-                    rowstr = " ".join(map(lambda x: "-9999", row_template))
+                    rowstr = " ".join(["-9999" for c in range(ncols)])
                     _.write(rowstr +  "\n")
 
                 rowstr = " ".join(map(lambda x: "-9999" if int(x) == -9999 else mold(x), row_arr))
@@ -167,10 +187,10 @@ def main():
     "collect data from workers"
 
     config = {
-        "user": "xps15",
+        "user": "berg-lc",
         "port": "7777",
         "no-data-port": "5555",
-        "server": "cluster2", 
+        "server": "cluster3", 
         "start-row": "0",
         "end-row": "-1"
     }
@@ -282,6 +302,8 @@ def main():
                 data["row-col-data"][row][col].append(create_output(result))
                 data["jobs-per-cell-count"][row][col] -= 1
 
+                received_env_count = received_env_count + 1
+
             if data["jobs-per-cell-count"][row][col] == 0:
                 data["datacell-count"][row] -= 1
 
@@ -294,9 +316,12 @@ def main():
                 
                 data["next-row"] += 1 # move to next row (to be written)
 
-            received_env_count = received_env_count + 1
-
         elif write_normal_output_files:
+
+            if result.get("type", "") in ["jobs-per-cell", "no-data", "target-grid-metadata"]:
+                print "ignoring", result.get("type", "")
+                continue
+
             print "received work result ", received_env_count, " customId: ", result.get("customId", "")
 
             custom_id = result["customId"]
@@ -304,9 +329,12 @@ def main():
             resolution = int(ci_parts[0])
             row = int(ci_parts[1])
             col = int(ci_parts[2])
+            crow = int(ci_parts[3])
+            ccol = int(ci_parts[4])
+            soil_id = int(ci_parts[5])
             
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out/out-" + file_name + ".csv", 'wb') as _:
+            with open("out/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
                 for data_ in result.get("data", []):
