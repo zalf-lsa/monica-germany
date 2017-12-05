@@ -11,10 +11,10 @@ library(rgdal)
 library(stringr)
 
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
-r <- raster("Tavg-1995-2012-avg.asc_") 
-print("Tavg-1995-2012.png")
-png("Tavg-1995-2012.png", width=2000, height=2000, pointsize=30)
-plot(r, main="Tavg-1995-2012")
+r <- raster("wheatwinterwheat_yield_1996_1.asc") 
+print("wheatwinterwheat_yield_1996_1.png")
+png("wheatwinterwheat_yield_1996_1.png", width=2000, height=2000, pointsize=30)
+plot(r, main="wheatwinterwheat_yield_1996_1")
 dev.off()
 
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
@@ -34,8 +34,10 @@ for(filename in files)
 
 
 setwd("P:/monica-germany/bkr-avgs/")
-setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/out")
-files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
+setwd("P:/monica-germany/landkreise-avgs/")
+setwd("P:/monica-germany/statistical-data/grids")
+setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/out - Kopie")
+files <- list.files(path=".", pattern=glob2rx("*yield*.asc"), full.names=F, recursive=FALSE)
 for(filename in files)
 {
   out_filename = str_replace(filename, "asc", "png")
