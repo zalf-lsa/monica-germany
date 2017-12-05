@@ -25,7 +25,10 @@
 		},
 		"WW": {
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/wheat.json"],
+				"species": {
+					"=": ["include-from-file", "monica-parameters/projects/sustag/wheat.json"],
+					"TransitionStageLeafExp": 2
+				},
 				"cultivar": {
 					"=": ["include-from-file", "monica-parameters/projects/sustag/winter-wheat.json"],
 					"OrganIdsForSecondaryYield": [
@@ -47,7 +50,9 @@
 							"yieldDryMatter": 0.86,
 							"yieldPercentage": 0.15
 						}
-					]
+					],
+					"EarlyRefLeafExp": 8,
+					"RefLeafExp": 16
 				}
 			},
 			"residueParams": ["include-from-file", "monica-parameters/crop-residues/wheat.json"]
@@ -422,6 +427,7 @@
 
 	"CropParameters": {
 		"DEFAULT": ["include-from-file", "monica-parameters/general/crop.json"],
-		"__enable_Photosynthesis_WangEngelTemperatureResponse__": false
+		"__enable_Photosynthesis_WangEngelTemperatureResponse__": false,
+		"__enable_T_response_leaf_expansion__": false
 	}
 }
