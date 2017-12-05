@@ -94,6 +94,9 @@ def create_output(result):
 def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     "write grids row by row"
 
+    if not hasattr(write_row_to_grids, "nodata_row_count"):
+        write_row_to_grids.nodata_row_count = 0
+
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
@@ -116,7 +119,6 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     cmc_to_crop = {}
 
     # skip this part if we write just a nodata line
-    insert_nodata_row = False
     if row in row_col_data:
         no_data_cols = 0
         for col in xrange(0, ncols):
@@ -147,7 +149,8 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                                 output_vals[(cm_count, year)][col] = -9999
                                 #no_data_cols += 1
 
-        insert_nodata_row = no_data_cols == ncols
+        if no_data_cols == ncols:
+            write_row_to_grids.nodata_row_count += 1
 
     for key, y2d_ in output_grids.iteritems():
 
@@ -171,9 +174,10 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
             with open(path_to_file, "a") as _:
 
-                if insert_nodata_row:
+                for ndrc in range(write_row_to_grids.nodata_row_count):
                     rowstr = " ".join(["-9999" for c in range(ncols)])
                     _.write(rowstr +  "\n")
+                write_row_to_grids.nodata_row_count = 0
 
                 rowstr = " ".join(map(lambda x: "-9999" if int(x) == -9999 else mold(x), row_arr))
                 _.write(rowstr +  "\n")
