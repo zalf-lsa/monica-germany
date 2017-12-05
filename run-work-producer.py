@@ -401,6 +401,8 @@ def main():
                         seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
                         if seed_harvest_data:
                             env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
+                            #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
+                            env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
 
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
