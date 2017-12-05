@@ -48,6 +48,7 @@ PATHS = {
         "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
+        "path-to-projects-dir": "P:/",
         "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
     },
@@ -57,6 +58,7 @@ PATHS = {
         "path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
+        "path-to-projects-dir": "P:/",
         "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
     }
@@ -85,7 +87,7 @@ def main():
 
     paths = PATHS[config["user"]]
 
-    soil_db_con = sqlite3.connect(paths["path-to-soil-dir"] + "soil.sqlite")
+    soil_db_con = sqlite3.connect(paths["path-to-data-dir"] + "germany/buek1000.sqlite")
 
     config_and_no_data_socket.bind("tcp://*:" + str(config["no-data-port"]))
 
@@ -114,8 +116,84 @@ def main():
                 key, value = line.strip().split()
                 meta[key.strip().lower()] = float(value.strip())
             return meta
-
     
+    wgs84 = Proj(init="epsg:4326")
+    #gk3 = Proj(init="epsg:3396")
+    gk5 = Proj(init="epsg:31469")
+
+    ilr_seed_harvest_data = defaultdict(lambda: defaultdict(dict))
+    def create_seed_harvest_gk5_interpolator(path_to_csv_file, wgs85, gk5):
+        "read seed/harvest dates"
+
+        rename = {
+            "Winterweizen": [("WW", True)],
+            "Mais": [("SM", False), ("GM", False)],
+            "Winterraps": [("WRa", True)],
+            "Zucker-Ruebe": [("SBee", False)],
+            "Sommergerste": [("SB", False)]
+        }
+
+        with open(path_to_csv_file) as _:
+            reader = csv.reader(_)
+
+            # skip header line
+            reader.next()
+
+            points = []
+            values = []
+
+            prev_cs = None
+            prev_lat_lon = [None, None]
+            data_at_cs = defaultdict()
+            for row in reader:
+                
+                cs = int(row[1])
+
+                # if new climate station, store the data of the old climate station
+                if prev_cs is not None and cs != prev_cs:
+
+                    llat, llon = prev_lat_lon
+                    r_gk5, h_gk5 = transform(wgs84, gk5, llon, llat)
+                        
+                    points.append([r_gk5, h_gk5])
+                    values.append(prev_cs)
+
+                crop_name = row[5]
+                crop_ids = rename[crop_name]
+                for crop_id, is_wintercrop in crop_ids:
+                    try:
+                        sd, sm = map(int, row[6].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["sowing-date"] = "0000-{:02d}-{:02d}".format(sm, sd)
+
+                        esd, esm = map(int, row[11].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esm, esd)
+
+                        lsd, lsm = map(int, row[12].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsm, lsd)
+
+                        digit = 1 if is_wintercrop else 0
+
+                        hd, hm = map(int, row[9].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hm, hd)
+
+                        ehd, ehm = map(int, row[13].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehm, ehd)
+
+                        lhd, lhm = map(int, row[14].split(".")[:2])
+                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhm, lhd)
+                    except:
+                        continue
+
+                lat = float(row[2])
+                lon = float(row[3])
+                prev_lat_lon = (lat, lon)      
+                prev_cs = cs
+
+            return NearestNDInterpolator(np.array(points), np.array(values))
+
+    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops.csv", wgs84, gk5)
+
+
     def create_dem_slope_gk5_interpolator(dem_grid, meta):
         "read an ascii grid into a map, without the no-data values"
 
@@ -169,10 +247,6 @@ def main():
 
             return NearestNDInterpolator(np.array(points), np.array(values))
 
-    wgs84 = Proj(init="epsg:4326")
-    #gk3 = Proj(init="epsg:3396")
-    gk5 = Proj(init="epsg:31469")
-
     climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
 
 
@@ -191,8 +265,9 @@ def main():
     sent_env_count = 1
     start_time = time.clock()
 
-    soil_meta = read_grid_meta_data(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc")
-    with open(paths["path-to-soil-dir"] + "buek1000_50_gk5.asc") as soil_f:
+    path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
+    soil_meta = read_grid_meta_data(path_to_soil_map)
+    with open(path_to_soil_map) as soil_f:
         for _ in range(0, 6):
             soil_f.readline()
         
@@ -202,7 +277,7 @@ def main():
         xllcorner = int(soil_meta["xllcorner"])
         yllcorner = int(soil_meta["yllcorner"])
                     
-        resolution = 20
+        resolution = 1 #20
         vrows = srows // resolution
         vcols = scols // resolution
         lines = np.empty(resolution, dtype=object)
@@ -228,6 +303,9 @@ def main():
         })
         crop_rotation_templates = env_template.pop("cropRotation")
         env_template["cropRotation"] = []
+
+        def get_value(list_or_value):
+            return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
 
         crows_cols = set()
 
@@ -283,7 +361,9 @@ def main():
                             heightNN = dem_grid[ds_row, ds_col]
                             slope = slope_grid[ds_row, ds_col]
                             
-                            unique_jobs[(crow, ccol, soil_id, int(round(heightNN/10.0)*10), int(round(slope)))] += 1
+                            seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
+
+                            unique_jobs[(crow, ccol, soil_id, int(round(heightNN/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
 
                             full_no_data_block = False
 
@@ -307,21 +387,53 @@ def main():
                         })
 
                     uj_id = 0
-                    for (crow, ccol, soil_id, heightNN, slope), job in unique_jobs.iteritems():
+                    for (crow, ccol, soil_id, heightNN, slope, seed_harvest_cs), job in unique_jobs.iteritems():
 
                         uj_id += 1
 
-                        #clat, clon = cdict[(crow, ccol)]
+                        clat, clon = cdict[(crow, ccol)]
                         #slon, slat = transform(gk5, wgs84, r, h)
                         #print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
                         
                         env_template["cropRotation"] = crop_rotation_templates[crop_id]
+                        
+                        # set external seed/harvest dates
+                        seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
+                        if seed_harvest_data:
+                            env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
 
+                        # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
                         soil_profile = monica_io.find_and_replace_references(sp_json, sp_json)["result"]
                         env_template["params"]["siteParameters"]["SoilProfileParameters"] = soil_profile
+
+                        # setting groundwater level
+                        groundwaterlevel = 20
+                        layer_depth = 0
+                        for layer in soil_profile:
+                            if layer.get("is_in_groundwater", False):
+                                groundwaterlevel = layer_depth
+                                print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
+                                break
+                            layer_depth += get_value(layer["Thickness"])
+                        env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepthMonth"] = 3
+                        env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepth"] = [max(0, groundwaterlevel - 0.2) , "m"]
+                        env_template["params"]["userEnvironmentParameters"]["MaxGroundwaterDepth"] = [groundwaterlevel + 0.2, "m"]
+                            
+                        # setting impenetrable layer
+                        impenetrable_layer_depth = get_value(env_template["params"]["userEnvironmentParameters"]["LeachingDepth"])
+                        layer_depth = 0
+                        for layer in soil_profile:
+                            if layer.get("is_impenetrable", False):
+                                impenetrable_layer_depth = layer_depth
+                                print "setting leaching depth of soil_id:", str(soil_id), "to", impenetrable_layer_depth, "m"
+                                break
+                            layer_depth += get_value(layer["Thickness"])
+                        env_template["params"]["userEnvironmentParameters"]["LeachingDepth"] = [impenetrable_layer_depth, "m"]
+
                         env_template["params"]["siteParameters"]["heightNN"] = heightNN
                         env_template["params"]["siteParameters"]["slope"] = slope / 100.0
+                        env_template["params"]["siteParameters"]["Latitude"] = clat
 
                         env_template["csvViaHeaderOptions"] = sim_json["climate.csv-options"]
 
@@ -356,6 +468,5 @@ def main():
     print "sending ", (sent_env_count-1), " envs took ", (stop_time - start_time), " seconds"
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
     return
-
 
 main()
