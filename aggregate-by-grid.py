@@ -20,6 +20,7 @@ import os
 import math
 import json
 import csv
+import string
 #import copy
 from StringIO import StringIO
 from datetime import date, datetime, timedelta
@@ -33,18 +34,34 @@ import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 from pyproj import Proj, transform
 
+def read_header(path_to_ascii_grid_file):
+    "read metadata from esri ascii grid file"
+    metadata = {}
+    header_str = ""
+    with open(path_to_ascii_grid_file) as _:
+        for i in range(0, 6):
+            line = _.readline()
+            header_str += line
+            sline = [x for x in line.split() if len(x) > 0]
+            if len(sline) > 1:
+                metadata[sline[0].strip().lower()] = float(sline[1].strip())
+    return metadata, header_str
+
 def main():
 
     config = {
-        "path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/2017-11-08/",
+        "path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
         
-        #"path-to-agg-grid": "D:/germany/landkreise/landkreise_1000_gk3.asc",
-        #"path-to-out-dir": "landkreise-avgs/"
-        "path-to-agg-grid": "D:/germany/bkr_soil-climate-regions/bkr_1000_gk3.asc",
-        "path-to-out-dir": "bkr-avgs/",
+        "path-to-agg-grid": "D:/germany/landkreise_1000_gk3.asc",
+        "path-to-out-dir": "landkreise-avgs/",
+        #"path-to-agg-grid": "D:/germany/bkr_1000_gk3.asc",
+        #"path-to-out-dir": "bkr-avgs/",
+
+        "path-to-corine-grid": "d:/germany/corine2006_1000_gk5.asc",
 
         "agg-grid-epsg": "3396", #gk3
         "grids-epsg": "31469", #gk5   #wgs84 = 4326
+        "corine-epsg": "31469",
 
         "pattern": "*_yield_*.asc"
     }
@@ -54,56 +71,45 @@ def main():
             if k in config:
                 config[k] = v
 
-
-    def read_header(path_to_ascii_grid_file):
-        "read metadata from esri ascii grid file"
-        metadata = {}
-        header_str = ""
-        with open(path_to_ascii_grid_file) as _:
-            for i in range(0, 6):
-                line = _.readline()
-                header_str += line
-                sline = [x for x in line.split() if len(x) > 0]
-                if len(sline) > 1:
-                    metadata[sline[0].strip().lower()] = float(sline[1].strip())
-        return metadata, header_str
-
-    def create_agg_grid_interpolator(path_to_file):
+    def create_integer_grid_interpolator(arr, meta):
         "read an ascii grid into a map, without the no-data values"
 
-        arr = np.loadtxt(path_to_file, skiprows=6)
         rows, cols = arr.shape
-
-        meta, header_str = read_header(path_to_file)
-
-        if "xllcorner" not in meta \
-        or "yllcorner" not in meta \
-        or "cellsize" not in meta \
-        or "nrows" not in meta:
-            print path_to_file, "didn't contain correct header information, can't create gk3_interpolator"
-            return None, None
 
         xll_center = int(meta["xllcorner"]) + int(meta["cellsize"]) // 2
         yll_center = int(meta["yllcorner"]) + int(meta["cellsize"]) // 2
         yul_center = yll_center + (int(meta["nrows"]) - 1)*int(meta["cellsize"])
+        no_data = meta["nodata_value"]
 
         points = []
         values = []
 
         for row in range(rows):
             for col in range(cols):
+                value = arr[row, col]
+                if value == no_data:
+                    continue
                 r = xll_center + col * int(meta["cellsize"])
                 h = yul_center - row * int(meta["cellsize"])
                 points.append([r, h])
-                values.append(arr[row, col])
+                values.append(value)
 
-        return NearestNDInterpolator(np.array(points), np.array(values)), arr, header_str
+        return NearestNDInterpolator(np.array(points), np.array(values))
     
-    agg_grid_interpolate, arr_template, header_str = create_agg_grid_interpolator(config["path-to-agg-grid"])
+    path_to_agg_grid = config["path-to-agg-grid"]
+    agg_meta, header_str = read_header(path_to_agg_grid)
+    arr_template = np.loadtxt(path_to_agg_grid, skiprows=6)
+    agg_grid_interpolate = create_integer_grid_interpolator(arr_template, agg_meta)
+
+    path_to_corine_grid = config["path-to-corine-grid"]
+    corine_meta, _ = read_header(path_to_corine_grid)
+    corine_grid = np.loadtxt(path_to_corine_grid, skiprows=6)
+    corine_grid_interpolate = create_integer_grid_interpolator(corine_grid, corine_meta)
 
     #wgs84 = Proj(init="epsg:4326")
     agg_grid_proj = Proj(init="epsg:" + config["agg-grid-epsg"])
     grids_proj = Proj(init="epsg:" + config["grids-epsg"])
+    corine_proj = Proj(init="epsg:" + config["corine-epsg"])
 
     path_to_grids_dir = config["path-to-grids-dir"]
     path_to_out_dir = config["path-to-out-dir"]
@@ -114,13 +120,6 @@ def main():
 
             meta, _ = read_header(path_to_grids_dir + filename)
             
-            if "xllcorner" not in meta \
-            or "yllcorner" not in meta \
-            or "cellsize" not in meta \
-            or "nrows" not in meta:
-                print path_to_grids_dir, filename, "didn't contain correct header information, skipping this file"
-                continue
-
             xll_center = meta["xllcorner"] + int(meta["cellsize"]) // 2
             yll_center = meta["yllcorner"] + int(meta["cellsize"]) // 2
             yul_center = yll_center + (int(meta["nrows"]) - 1)*int(meta["cellsize"])
@@ -143,15 +142,18 @@ def main():
                     grid_r = xll_center + col * int(meta["cellsize"])
                     grid_h = yul_center - row * int(meta["cellsize"])
 
-                    agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
-                    id = int(agg_grid_interpolate(agg_grid_r, agg_grid_h))
+                    corine_grid_r, corine_grid_h = transform(grids_proj, corine_proj, grid_r, grid_h)
+                    corine_id = int(corine_grid_interpolate(corine_grid_r, corine_grid_h))
 
-                    if int(id) == -9999:
-                        #print "row:", row, "col:", col, "value:", value, "gave no id, skipping it"
+                    #aggregate just agricultural landuse
+                    if corine_id < 240 or 244 < corine_id:
                         continue
 
-                    sums[id] += arr[row, col]
-                    counts[id] += 1
+                    agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
+                    agg_id = int(agg_grid_interpolate(agg_grid_r, agg_grid_h))
+
+                    sums[agg_id] += arr[row, col]
+                    counts[agg_id] += 1
                 
                 if row % 10 == 0:
                     print row,
@@ -171,7 +173,7 @@ def main():
             for row in range(rows):
                 for col in range(cols):
                     if int(arr_template[row, col]) != -9999:
-                        arr[row, col] = results[int(arr_template[row, col])]
+                        arr[row, col] = results.get(int(arr_template[row, col]), -9999)
             np.savetxt(path_to_out_dir + filename[:-4] + "_avgs.asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
 
 def write_grid():
@@ -202,5 +204,55 @@ def write_grid():
     print ""
 
 
+import locale
+def create_kreis_grids_from_statistical_data():
+    with open("p:/monica-germany/statistical-data/yieldstatger.csv") as stat_f:
+        reader = csv.reader(stat_f, delimiter=";")
+
+        for i in range(7):
+            reader.next()
+
+        crop_to_year_to_data = defaultdict(lambda: defaultdict(dict))
+
+        crops = ["winterwheat", "rye", "winterbarley", "summerbarley", "oat", "triticale", "potatoes", "sugarbeet", "winterrapeseed", "silagemaize"]
+
+        #loc = locale.getlocale()
+        #locale.setlocale(locale.LC_ALL, 'deu')
+
+        for row in reader:
+            for i, crop in enumerate(crops):
+                try:
+                    year = int(row[0])
+                    id = int(row[1])
+                    yield_ = float(string.replace(row[3+i],",","."))
+                except: 
+                    continue
+                
+                crop_to_year_to_data[crop][year][id] = yield_
+
+        path_to_template = "D:/germany/landkreise_1000_gk3.asc"
+        arr_template = np.loadtxt(path_to_template, skiprows=6)
+        arr_meta, header_str = read_header(path_to_template)
+        nodata_value = arr_meta["nodata_value"]
+
+        for crop, y2d in crop_to_year_to_data.iteritems():
+            for year, data in y2d.iteritems():
+
+                arr = np.full(arr_template.shape, nodata_value, dtype=float)
+                rows, cols = arr.shape
+
+                for row in range(rows):
+                    for col in range(cols):
+                        value = arr_template[row, col]
+                        if value == nodata_value:
+                            continue
+
+                        arr[row, col] = data.get(value, -9999)
+
+                np.savetxt("statistical-data-out/" + crop + "_" + str(year) + ".asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
+                
+            
+
+create_kreis_grids_from_statistical_data()
 #write_grid()
-main()
+#main()
