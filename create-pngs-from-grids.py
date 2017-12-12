@@ -88,7 +88,7 @@ def create_avg_grid(path_to_dir):
 
     for filename in sorted(os.listdir(path_to_dir)):
         if filename[-3:] == "asc":
-            id = "_".join(filename.split("_")[:2])#2])
+            id = "_".join(filename.split("_")[:1])#2])
             arr = np.loadtxt(path_to_dir + filename, skiprows=6)
 
             if id not in acc_arrs:
@@ -112,9 +112,11 @@ def create_avg_grid(path_to_dir):
 def main():
 
     config = {
+        #"dir": "landkreise-avgs/",
         #"dir": "P:/monica-germany/landkreise-avgs/", 
-        "dir": "out/", 
+        #"dir": "out/", 
         #"dir": "P:/monica-germany/statistical-data/grids/", 
+        "dir": "statistical-data-out/", 
         "file": "",
 
         "from-color": "red",

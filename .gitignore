@@ -2,4 +2,6 @@
 out.csv
 monica_io.pyc
 out*
-
+.RData
+.RHistory
+landkreise-avgs
