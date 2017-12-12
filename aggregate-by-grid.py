@@ -50,16 +50,19 @@ def read_header(path_to_ascii_grid_file):
 def main():
 
     config = {
-        "path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
+        #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
+        "path-to-grids-dir": "out/",
         
-        "path-to-agg-grid": "D:/germany/landkreise_1000_gk3.asc",
+        "path-to-agg-grid": "N:/germany/landkreise_1000_gk3.asc",
+        "path-to-agg2-grid": "N:/germany/bkr_1000_gk3.asc",
         "path-to-out-dir": "landkreise-avgs/",
         #"path-to-agg-grid": "D:/germany/bkr_1000_gk3.asc",
         #"path-to-out-dir": "bkr-avgs/",
 
-        "path-to-corine-grid": "d:/germany/corine2006_1000_gk5.asc",
+        "path-to-corine-grid": "N:/germany/corine2006_1000_gk5.asc",
 
         "agg-grid-epsg": "3396", #gk3
+        "agg2-grid-epsg": "3396", #gk3
         "grids-epsg": "31469", #gk5   #wgs84 = 4326
         "corine-epsg": "31469",
 
@@ -101,6 +104,11 @@ def main():
     arr_template = np.loadtxt(path_to_agg_grid, skiprows=6)
     agg_grid_interpolate = create_integer_grid_interpolator(arr_template, agg_meta)
 
+    path_to_agg2_grid = config["path-to-agg2-grid"]
+    agg2_meta, _ = read_header(path_to_agg_grid)
+    arr2_template = np.loadtxt(path_to_agg2_grid, skiprows=6)
+    agg2_grid_interpolate = create_integer_grid_interpolator(arr2_template, agg2_meta)
+
     path_to_corine_grid = config["path-to-corine-grid"]
     corine_meta, _ = read_header(path_to_corine_grid)
     corine_grid = np.loadtxt(path_to_corine_grid, skiprows=6)
@@ -108,6 +116,7 @@ def main():
 
     #wgs84 = Proj(init="epsg:4326")
     agg_grid_proj = Proj(init="epsg:" + config["agg-grid-epsg"])
+    agg2_grid_proj = Proj(init="epsg:" + config["agg2-grid-epsg"])
     grids_proj = Proj(init="epsg:" + config["grids-epsg"])
     corine_proj = Proj(init="epsg:" + config["corine-epsg"])
 
@@ -131,6 +140,8 @@ def main():
 
             rows, cols = arr.shape
 
+            agg_to_agg2 = defaultdict(set)
+
             print rows,
             for row in range(rows):
                 for col in range(cols):
@@ -152,6 +163,11 @@ def main():
                     agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
                     agg_id = int(agg_grid_interpolate(agg_grid_r, agg_grid_h))
 
+                    agg2_grid_r, agg2_grid_h = transform(grids_proj, agg2_grid_proj, grid_r, grid_h)
+                    agg2_id = int(agg2_grid_interpolate(agg2_grid_r, agg2_grid_h))
+
+                    agg_to_agg2[agg_id].add(agg2_id)
+
                     sums[agg_id] += arr[row, col]
                     counts[agg_id] += 1
                 
@@ -165,8 +181,12 @@ def main():
 
             with open(path_to_out_dir + filename[:-4] + "_avgs.csv", "wb") as _:
                 csv_writer = csv.writer(_)
+                csv_writer.writerow(["id", "value", "id2..."])
                 for id in sorted(results.keys()):
-                    csv_writer.writerow([id, round(results[id], 1)])
+                    row = [id, round(results[id], 1)]
+                    for id2 in sorted(agg_to_agg2[id]):
+                        row.append(id2)
+                    csv_writer.writerow(row)
 
             arr = np.full(arr_template.shape, -9999, dtype=float)
             rows, cols = arr.shape
@@ -206,7 +226,7 @@ def write_grid():
 
 import locale
 def create_kreis_grids_from_statistical_data():
-    with open("p:/monica-germany/statistical-data/yieldstatger.csv") as stat_f:
+    with open("P:/monica-germany/statistical-data/yieldstatger.csv") as stat_f:
         reader = csv.reader(stat_f, delimiter=";")
 
         for i in range(7):
@@ -230,7 +250,7 @@ def create_kreis_grids_from_statistical_data():
                 
                 crop_to_year_to_data[crop][year][id] = yield_
 
-        path_to_template = "D:/germany/landkreise_1000_gk3.asc"
+        path_to_template = "N:/germany/landkreise_1000_gk3.asc"
         arr_template = np.loadtxt(path_to_template, skiprows=6)
         arr_meta, header_str = read_header(path_to_template)
         nodata_value = arr_meta["nodata_value"]
@@ -247,7 +267,10 @@ def create_kreis_grids_from_statistical_data():
                         if value == nodata_value:
                             continue
 
-                        arr[row, col] = data.get(value, -9999)
+                        v = data.get(value, -9999)
+                        if v != -9999:
+                            v *= 100
+                        arr[row, col] = v
 
                 np.savetxt("statistical-data-out/" + crop + "_" + str(year) + ".asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
                 
