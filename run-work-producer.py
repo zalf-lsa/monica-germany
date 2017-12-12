@@ -402,7 +402,7 @@ def main():
                         if seed_harvest_data:
                             env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
                             #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
-                            env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
+                            #env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
 
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
@@ -432,6 +432,7 @@ def main():
                                 break
                             layer_depth += get_value(layer["Thickness"])
                         env_template["params"]["userEnvironmentParameters"]["LeachingDepth"] = [impenetrable_layer_depth, "m"]
+                        env_template["params"]["siteParameters"]["ImpenetrableLayerDepth"] = [impenetrable_layer_depth, "m"]
 
                         env_template["params"]["siteParameters"]["heightNN"] = heightNN
                         env_template["params"]["siteParameters"]["slope"] = slope / 100.0
