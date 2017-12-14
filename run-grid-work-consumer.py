@@ -102,19 +102,23 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
     output_grids = {
         "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "total-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
         "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
         "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "may-to-harvest-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
         "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1}
+        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
     }
 
     cmc_to_crop = {}

@@ -47,7 +47,7 @@ def read_header(path_to_ascii_grid_file):
                 metadata[sline[0].strip().lower()] = float(sline[1].strip())
     return metadata, header_str
 
-def main():
+def aggregate_by_grid():
 
     config = {
         #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
@@ -195,6 +195,157 @@ def main():
                     if int(arr_template[row, col]) != -9999:
                         arr[row, col] = results.get(int(arr_template[row, col]), -9999)
             np.savetxt(path_to_out_dir + filename[:-4] + "_avgs.asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
+aggregate_by_grid()
+
+def create_lat_dem_per_lk_csv():
+
+    def create_integer_grid_interpolator(arr, meta):
+        "read an ascii grid into a map, without the no-data values"
+
+        rows, cols = arr.shape
+
+        xll_center = int(meta["xllcorner"]) + int(meta["cellsize"]) // 2
+        yll_center = int(meta["yllcorner"]) + int(meta["cellsize"]) // 2
+        yul_center = yll_center + (int(meta["nrows"]) - 1)*int(meta["cellsize"])
+        no_data = meta["nodata_value"]
+
+        points = []
+        values = []
+
+        for row in range(rows):
+            for col in range(cols):
+                value = arr[row, col]
+                if value == no_data:
+                    continue
+                r = xll_center + col * int(meta["cellsize"])
+                h = yul_center - row * int(meta["cellsize"])
+                points.append([r, h])
+                values.append(value)
+
+        return NearestNDInterpolator(np.array(points), np.array(values))
+    
+    path_to_lk_grid = "N:/germany/landkreise_1000_gk3.asc"
+    lk_meta, _ = read_header(path_to_lk_grid)
+    lk_grid = np.loadtxt(path_to_lk_grid, skiprows=6, dtype=int)
+
+    path_to_bkr_grid = "N:/germany/bkr_1000_gk3.asc"
+    bkr_meta, _ = read_header(path_to_bkr_grid)
+    bkr_grid = np.loadtxt(path_to_bkr_grid, skiprows=6, dtype=int)
+    bkr_gk3_grid_interpolate = create_integer_grid_interpolator(bkr_grid, bkr_meta)
+
+    path_to_dem_grid = "N:/germany/dem_1000_gk5.asc"
+    dem_meta, _ = read_header(path_to_dem_grid)
+    dem_grid = np.loadtxt(path_to_dem_grid, skiprows=6)
+    dem_gk5_grid_interpolate = create_integer_grid_interpolator(dem_grid, dem_meta)
+
+    wgs84 = Proj(init="epsg:4326")
+    gk3 = Proj(init="epsg:3396")
+    gk5 = Proj(init="epsg:31469")
+
+    lat_sums = defaultdict(lambda: 0)
+    dem_sums = defaultdict(lambda: 0)
+    counts = defaultdict(lambda: 0)
+    lk_to_bkrs = defaultdict(set)
+
+    rows, cols = lk_grid.shape
+    for row in xrange(rows):
+        for col in xrange(cols):
+
+            xll_center = int(lk_meta["xllcorner"]) + int(lk_meta["cellsize"]) // 2
+            yll_center = int(lk_meta["yllcorner"]) + int(lk_meta["cellsize"]) // 2
+            yul_center = yll_center + (int(lk_meta["nrows"]) - 1)*int(lk_meta["cellsize"])
+            no_data = lk_meta["nodata_value"]
+
+            lk_id = lk_grid[row, col]
+            if lk_id == no_data:
+                continue
+    
+            gk3_r = xll_center + col * int(lk_meta["cellsize"])
+            gk3_h = yul_center - row * int(lk_meta["cellsize"])
+            _, lat = transform(gk3, wgs84, gk3_r, gk3_h)
+            lat_sums[lk_id] += lat
+            
+            gk5_r, gk5_h = transform(gk3, gk5, gk3_r, gk3_h)
+            elevation = dem_gk5_grid_interpolate(gk5_r, gk5_h)
+            dem_sums[lk_id] += elevation
+            
+            bkr_id = int(bkr_gk3_grid_interpolate(gk3_r, gk3_h))
+            lk_to_bkrs[lk_id].add(bkr_id)
+
+            counts[lk_id] += 1
+
+        if row % 10 == 0:
+            print row,
+
+
+    lat_results = {}
+    dem_results = {}
+    for lk_id in lat_sums.keys():
+        lat_results[lk_id] = lat_sums.get(lk_id, 0) / counts[lk_id]
+        dem_results[lk_id] = dem_sums.get(lk_id, 0) / counts[lk_id]
+
+    with open("avg_elevation_latitude_per_landkreis.csv", "wb") as _:
+        csv_writer = csv.writer(_)
+        csv_writer.writerow(["lk_id", "latitude", "elevation", "bkr_ids..."])
+        for lk_id in sorted(lat_results.keys()):
+            row = [lk_id, round(lat_results[lk_id], 1), round(dem_results[lk_id], 1)]
+            for bkr in sorted(lk_to_bkrs[lk_id]):
+                row.append(bkr)
+            csv_writer.writerow(row)
+#create_lat_dem_per_lk_csv()
+
+def write_csv_data_into_landkreis_grid():
+
+    out_dir = "indices-out/"
+    files = {
+        "2": "report_indices.csv"
+    }
+
+    path_to_lk_grid = "N:/germany/landkreise_1000_gk3.asc"
+    lk_meta, lk_header = read_header(path_to_lk_grid)
+    lk_grid = np.loadtxt(path_to_lk_grid, skiprows=6, dtype=int)
+    nodata_value = int(lk_meta["nodata_value"])
+
+    for id, path_to_file in files.iteritems():
+
+        data = defaultdict(dict)
+        with open(path_to_file) as csv_f:
+            csv_reader = csv.reader(csv_f)
+            csv_header = csv_reader.next()
+
+            for row in csv_reader:
+                for i, header_col in enumerate(csv_header):
+                    if i == 0:
+                        continue
+                    data[header_col][int(row[0])] = float(row[i])
+
+        for output, out_data in data.iteritems():
+
+            print "creating", id, output
+            grid = np.empty(lk_grid.shape, dtype=float)
+            np.copyto(grid, lk_grid)
+            rows, cols = grid.shape
+            print rows, "rows"
+            
+            for row in xrange(rows):
+                if row % 10 == 0:
+                    print row,
+
+                for col in xrange(cols):
+                    value = grid[row, col]
+                    if int(value) == nodata_value:
+                        continue
+                    grid[row, col] = out_data.get(value, nodata_value)
+            
+            full_out_dir = out_dir + "indices-" + id + "-" + date.today().isoformat() + "/"
+            try:
+                os.makedirs(full_out_dir)
+            except:
+                pass
+            outfile = full_out_dir + output + ".asc"
+            np.savetxt(outfile, grid, header=lk_header.strip(), delimiter=" ", comments="", fmt="%.5f") 
+            print "wrote", outfile
+#write_csv_data_into_landkreis_grid()
 
 def write_grid():
     with open("D:/soil/buek1000/brd/buek1000_50_gk5.asc") as _:
@@ -222,7 +373,7 @@ def write_grid():
         #        _.readline()
 
     print ""
-
+#write_grid()
 
 import locale
 def create_kreis_grids_from_statistical_data():
@@ -273,9 +424,9 @@ def create_kreis_grids_from_statistical_data():
                         arr[row, col] = v
 
                 np.savetxt("statistical-data-out/" + crop + "_" + str(year) + ".asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
-                
+#create_kreis_grids_from_statistical_data()            
             
 
-create_kreis_grids_from_statistical_data()
-#write_grid()
-#main()
+
+
+
