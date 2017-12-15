@@ -5,3 +5,5 @@ out*
 .RData
 .RHistory
 landkreise-avgs
+calculate-indices/out/
+calculate-indices/report_indices.csv
