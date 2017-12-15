@@ -6,3 +6,5 @@ out*
 .RHistory
 landkreise-avgs
 indices-out
+calculate-indices/out/
+calculate-indices/report_indices.csv
