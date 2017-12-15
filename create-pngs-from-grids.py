@@ -81,42 +81,15 @@ def create_png(config, path_to_file, write_legend_file=False):
             _.write(legend_str.format(upper_whisker, float(config["times-iqr"]), \
             upper_quartile, median, iqr, lower_quartile, lower_whisker, float(config["times-iqr"])))
 
-def create_avg_grid(path_to_dir):
-
-    acc_arrs = defaultdict(lambda: {"arr": None, "count": 0, "filename": "", "header": ""})
-    arr_counts = {}
-
-    for filename in sorted(os.listdir(path_to_dir)):
-        if filename[-3:] == "asc":
-            id = "_".join(filename.split("_")[:1])#2])
-            arr = np.loadtxt(path_to_dir + filename, skiprows=6)
-
-            if id not in acc_arrs:
-                acc_arrs[id]["arr"] = np.full(arr.shape, 0.0, arr.dtype)
-                acc_arrs[id]["filename"] = id + "_avg.asc"
-                with open(path_to_dir + filename) as _:
-                    for i in range(6):
-                        acc_arrs[id]["header"] += _.readline()
-
-            acc_arrs[id]["arr"] += arr
-            acc_arrs[id]["count"] += 1
-            print "added:", filename
-
-
-    for id, acc_arr in acc_arrs.iteritems():
-        acc_arr["arr"] /= acc_arr["count"]
-        np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
-        print "wrote:", acc_arr["filename"]
-
 
 def main():
 
     config = {
         #"dir": "landkreise-avgs/",
         #"dir": "P:/monica-germany/landkreise-avgs/", 
-        #"dir": "out/", 
+        "dir": "out/", 
         #"dir": "P:/monica-germany/statistical-data/grids/", 
-        "dir": "statistical-data-out/", 
+        #"dir": "statistical-data-out/", 
         "file": "",
 
         "from-color": "red",
@@ -136,9 +109,6 @@ def main():
             k,v = arg.split("=")
             if k in config:
                 config[k] = v
-
-    create_avg_grid(config["dir"])
-    exit()
 
     for filename in os.listdir(config["dir"]):
         if (config["file"] and filename == config["file"]) \

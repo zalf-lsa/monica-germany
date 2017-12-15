@@ -195,7 +195,7 @@ def aggregate_by_grid():
                     if int(arr_template[row, col]) != -9999:
                         arr[row, col] = results.get(int(arr_template[row, col]), -9999)
             np.savetxt(path_to_out_dir + filename[:-4] + "_avgs.asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
-aggregate_by_grid()
+#aggregate_by_grid()
 
 def create_lat_dem_per_lk_csv():
 
@@ -298,7 +298,7 @@ def write_csv_data_into_landkreis_grid():
 
     out_dir = "indices-out/"
     files = {
-        "2": "report_indices.csv"
+        "1": "report_indices_id1.csv"
     }
 
     path_to_lk_grid = "N:/germany/landkreise_1000_gk3.asc"
@@ -427,6 +427,32 @@ def create_kreis_grids_from_statistical_data():
 #create_kreis_grids_from_statistical_data()            
             
 
+def create_avg_grid(path_to_dir):
 
+    acc_arrs = defaultdict(lambda: {"arr": None, "count": 0, "filename": "", "header": ""})
+    arr_counts = {}
+
+    for filename in sorted(os.listdir(path_to_dir)):
+        if filename[-3:] == "asc":
+            id = "_".join(filename.split("_")[:2])#2])
+            arr = np.loadtxt(path_to_dir + filename, skiprows=6)
+
+            if id not in acc_arrs:
+                acc_arrs[id]["arr"] = np.full(arr.shape, 0.0, arr.dtype)
+                acc_arrs[id]["filename"] = id + "_avg.asc"
+                with open(path_to_dir + filename) as _:
+                    for i in range(6):
+                        acc_arrs[id]["header"] += _.readline()
+
+            acc_arrs[id]["arr"] += arr
+            acc_arrs[id]["count"] += 1
+            print "added:", filename
+
+
+    for id, acc_arr in acc_arrs.iteritems():
+        acc_arr["arr"] /= acc_arr["count"]
+        np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
+        print "wrote:", acc_arr["filename"]
+#create_avg_grid("out/")
 
 
