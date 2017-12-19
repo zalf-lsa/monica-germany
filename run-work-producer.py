@@ -125,16 +125,21 @@ def main():
     setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
     run_setups = [3]
 
-    def read_grid_meta_data(path_to_asc_file):
-        with open(path_to_asc_file) as _:
-            meta = {}
-            for index, line in enumerate(_):
-                if index > 5: 
-                    break
-                key, value = line.strip().split()
-                meta[key.strip().lower()] = float(value.strip())
-            return meta
-    
+
+    def read_header(path_to_ascii_grid_file):
+        "read metadata from esri ascii grid file"
+        metadata = {}
+        header_str = ""
+        with open(path_to_ascii_grid_file) as _:
+            for i in range(0, 6):
+                line = _.readline()
+                header_str += line
+                sline = [x for x in line.split() if len(x) > 0]
+                if len(sline) > 1:
+                    metadata[sline[0].strip().lower()] = float(sline[1].strip())
+        return metadata, header_str
+
+
     wgs84 = Proj(init="epsg:4326")
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
@@ -211,38 +216,46 @@ def main():
 
     seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops.csv", wgs84, gk5)
 
-
-    def create_dem_slope_gk5_interpolator(dem_grid, meta):
+    def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
 
-        rows, cols = dem_grid.shape
+        rows, cols = arr.shape
+
+        cellsize = int(meta["cellsize"])
         xll = int(meta["xllcorner"])
         yll = int(meta["yllcorner"])
-        cellsize = int(meta["cellsize"])
-        
+        nodata_value = meta["nodata_value"]
+
+        xll_center = xll + cellsize // 2
+        yll_center = yll + cellsize // 2
+        yul_center = yll_center + (rows - 1)*cellsize
+
         points = []
         values = []
 
-        i = 0
         for row in range(rows):
             for col in range(cols):
-                heightNN = dem_grid[row, col]
-
-                if heightNN < -1000:
+                value = arr[row, col]
+                if ignore_nodata and value == nodata_value:
                     continue
-                
-                r_gk5 = xll + cellsize // 2 + col * cellsize
-                h_gk5 = yll + cellsize // 2 + (rows - row - 1) * cellsize
-                points.append([r_gk5, h_gk5])
-                values.append((row, col))
+                r = xll_center + col * cellsize
+                h = yul_center - row * cellsize
+                points.append([r, h])
+                values.append(value)
 
         return NearestNDInterpolator(np.array(points), np.array(values))
 
-    dem_slope_metadata = read_grid_meta_data(paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc")
-    dem_grid = np.loadtxt(paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc", dtype=int, skiprows=6)
-    slope_grid = np.loadtxt(paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc", dtype=float, skiprows=6)
-    dem_slope_gk5_interpolate = create_dem_slope_gk5_interpolator(dem_grid, dem_slope_metadata)
+    path_to_dem_grid = paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc"
+    path_to_slope_grid = paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc"
+    dem_slope_metadata, _ = read_header(path_to_dem_grid)
+    dem_grid = np.loadtxt(path_to_dem_grid, dtype=int, skiprows=6)
+    slope_grid = np.loadtxt(path_to_slope_grid, dtype=float, skiprows=6)
+    dem_slope_gk5_interpolate = create_ascii_grid_interpolator(dem_grid, dem_slope_metadata)
 
+    path_to_corine_grid = paths["path-to-data-dir"] + "/germany/corine2006_1000_gk5.asc"
+    corine_meta, _ = read_header(path_to_corine_grid)
+    corine_grid = np.loadtxt(path_to_corine_grid, dtype=int, skiprows=6)
+    corine_gk5_interpolate = create_ascii_grid_interpolator(corine_grid, corine_meta)
 
     cdict = {}
     def create_climate_gk5_interpolator_from_json_file(path_to_latlon_to_rowcol_file, wgs84, gk5):
@@ -290,7 +303,7 @@ def main():
         setup = setups[setup_id]
 
         path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
-        soil_meta = read_grid_meta_data(path_to_soil_map)
+        soil_meta, _ = read_header(path_to_soil_map)
         with open(path_to_soil_map) as soil_f:
             for _ in range(0, 6):
                 soil_f.readline()
@@ -380,13 +393,18 @@ def main():
                             #inter = crow/ccol encoded into integer
                             crow, ccol = climate_gk5_interpolate(sr_gk5, sh_gk5)
 
+                            if setup["just-agricultural-landuse"]:
+                                corine_id = corine_gk5_interpolate(sr_gk5, sh_gk5)
+                                if corine_id < 240 or corine_id > 244:
+                                    continue
+
                             ds_row, ds_col = dem_slope_gk5_interpolate(sr_gk5, sh_gk5)
-                            heightNN = dem_grid[ds_row, ds_col]
+                            height_nn = dem_grid[ds_row, ds_col]
                             slope = slope_grid[ds_row, ds_col]
                             
                             seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
 
-                            unique_jobs[(crow, ccol, soil_id, int(round(heightNN/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
+                            unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
 
                             full_no_data_block = False
 
