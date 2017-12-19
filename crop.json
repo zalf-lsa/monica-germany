@@ -24,6 +24,7 @@
 			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
 		},
 		"WW": {
+			"is-winter-crop": true,
 			"cropParams": {
 				"species": {
 					"=": ["include-from-file", "monica-parameters/projects/sustag/wheat.json"],
@@ -58,6 +59,7 @@
 			"residueParams": ["include-from-file", "monica-parameters/crop-residues/wheat.json"]
 		},
 		"WB": {
+			"is-winter-crop": true,
 			"cropParams": {
 				"species": ["include-from-file", "monica-parameters/projects/sustag/barley.json"],
 				"cultivar": {
@@ -116,6 +118,7 @@
 			"residueParams": ["include-from-file", "monica-parameters/crop-residues/barley.json"]
 		},
 		"WRa": {
+			"is-winter-crop": true,
 			"cropParams": {
 				"species": ["include-from-file", "monica-parameters/projects/sustag/rape.json"],
 				"cultivar": {
@@ -190,7 +193,8 @@
 			},			
 			"residueParams": ["include-from-file", "monica-parameters/crop-residues/beet.json"]
 		},
-		"WTr": {			
+		"WTr": {	
+			"is-winter-crop": true,		
 			"cropParams": {
 				"species": ["include-from-file", "monica-parameters/projects/sustag/triticale.json"],
 				"cultivar": {
