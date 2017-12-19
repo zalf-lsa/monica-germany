@@ -157,7 +157,7 @@ def aggregate_by_grid():
                     corine_id = int(corine_grid_interpolate(corine_grid_r, corine_grid_h))
 
                     #aggregate just agricultural landuse
-                    if corine_id < 240 or 244 < corine_id:
+                    if corine_id < 240 or corine_id > 244:
                         continue
 
                     agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
