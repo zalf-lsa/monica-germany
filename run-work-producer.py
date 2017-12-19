@@ -107,6 +107,24 @@ def main():
         crop_json = json.load(_)
 
 
+    def read_sim_setups(path_to_setups_csv):
+        with open(path_to_setups_csv) as setup_file:
+            setups = {}
+            reader = csv.reader(setup_file)
+            header_cols = reader.next()
+            for row in reader:
+                data = {}
+                for i, header_col in enumerate(header_cols):
+                    value = row[i]
+                    if value in ["true", "false"]:
+                        value = True if value == "true" else False
+                    data[header_col] = row[i]    
+                setups[int(data["run-id"])] = data
+            return setups
+
+    setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
+    run_setups = [3]
+
     def read_grid_meta_data(path_to_asc_file):
         with open(path_to_asc_file) as _:
             meta = {}
@@ -250,8 +268,8 @@ def main():
     climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
 
 
-    crops_ids = [
-        "WW",
+    #crops_ids = [
+    #    "WW",
         #"WB",
         #"SB",
         ##"RY",
@@ -260,56 +278,62 @@ def main():
         #"PO",
         #"SBee",
         #"WRa"
-    ]
+    #]
 
     sent_env_count = 1
     start_time = time.clock()
 
-    path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
-    soil_meta = read_grid_meta_data(path_to_soil_map)
-    with open(path_to_soil_map) as soil_f:
-        for _ in range(0, 6):
-            soil_f.readline()
-        
-        scols = int(soil_meta["ncols"])
-        srows = int(soil_meta["nrows"])
-        scellsize = int(soil_meta["cellsize"])
-        xllcorner = int(soil_meta["xllcorner"])
-        yllcorner = int(soil_meta["yllcorner"])
-                    
-        resolution = 1 #20
-        vrows = srows // resolution
-        vcols = scols // resolution
-        lines = np.empty(resolution, dtype=object)
+    for setup_id in run_setups:
 
-        # send config information to consumer
-        config_and_no_data_socket.send_json({
-            "type": "target-grid-metadata",
-            "nrows": vrows, 
-            "ncols": vcols,
-            "cellsize": scellsize * resolution,
-            "xllcorner": xllcorner,
-            "yllcorner": yllcorner,
-            "no-data": -9999
-        })
+        if setup_id not in setups:
+            continue
+        setup = setups[setup_id]
 
-        #unknown_soil_ids = set()
+        path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
+        soil_meta = read_grid_meta_data(path_to_soil_map)
+        with open(path_to_soil_map) as soil_f:
+            for _ in range(0, 6):
+                soil_f.readline()
+            
+            scols = int(soil_meta["ncols"])
+            srows = int(soil_meta["nrows"])
+            scellsize = int(soil_meta["cellsize"])
+            xllcorner = int(soil_meta["xllcorner"])
+            yllcorner = int(soil_meta["yllcorner"])
+                        
+            resolution = 1 #20
+            vrows = srows // resolution
+            vcols = scols // resolution
+            lines = np.empty(resolution, dtype=object)
 
-        env_template = monica_io.create_env_json_from_json_config({
-            "crop": crop_json,
-            "site": site_json,
-            "sim": sim_json,
-            "climate": ""
-        })
-        crop_rotation_templates = env_template.pop("cropRotation")
-        env_template["cropRotation"] = []
+            # send config information to consumer
+            config_and_no_data_socket.send_json({
+                "type": "target-grid-metadata",
+                "nrows": vrows, 
+                "ncols": vcols,
+                "cellsize": scellsize * resolution,
+                "xllcorner": xllcorner,
+                "yllcorner": yllcorner,
+                "no-data": -9999
+            })
 
-        def get_value(list_or_value):
-            return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
+            #unknown_soil_ids = set()
 
-        crows_cols = set()
+            env_template = monica_io.create_env_json_from_json_config({
+                "crop": crop_json,
+                "site": site_json,
+                "sim": sim_json,
+                "climate": ""
+            })
+            crop_rotation_templates = env_template.pop("cropRotation")
+            env_template["cropRotation"] = []
 
-        for crop_id in crops_ids:
+            def get_value(list_or_value):
+                return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
+
+            crows_cols = set()
+
+            crop_id = setup["crop"]
 
             for srow in xrange(0, vrows*resolution, resolution):
 
@@ -330,7 +354,6 @@ def main():
                     break
 
                 for scol in xrange(0, vcols*resolution, resolution):
-
                     unique_jobs = defaultdict(lambda: 0)
 
                     #virtual col
@@ -400,40 +423,61 @@ def main():
                         # set external seed/harvest dates
                         seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
                         if seed_harvest_data:
-                            env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
+                            if setup["sowing-date"] == "fixed":
+                                env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
+                            #if setup["harvest-date"]:
+                            #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
+                            #env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
 
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
                         soil_profile = monica_io.find_and_replace_references(sp_json, sp_json)["result"]
+                            
                         env_template["params"]["siteParameters"]["SoilProfileParameters"] = soil_profile
 
                         # setting groundwater level
-                        groundwaterlevel = 20
-                        layer_depth = 0
-                        for layer in soil_profile:
-                            if layer.get("is_in_groundwater", False):
-                                groundwaterlevel = layer_depth
-                                print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
-                                break
-                            layer_depth += get_value(layer["Thickness"])
-                        env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepthMonth"] = 3
-                        env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepth"] = [max(0, groundwaterlevel - 0.2) , "m"]
-                        env_template["params"]["userEnvironmentParameters"]["MaxGroundwaterDepth"] = [groundwaterlevel + 0.2, "m"]
+                        if setup["groundwater-level"]:
+                            groundwaterlevel = 20
+                            layer_depth = 0
+                            for layer in soil_profile:
+                                if layer.get("is_in_groundwater", False):
+                                    groundwaterlevel = layer_depth
+                                    print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
+                                    break
+                                layer_depth += get_value(layer["Thickness"])
+                            env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepthMonth"] = 3
+                            env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepth"] = [max(0, groundwaterlevel - 0.2) , "m"]
+                            env_template["params"]["userEnvironmentParameters"]["MaxGroundwaterDepth"] = [groundwaterlevel + 0.2, "m"]
                             
                         # setting impenetrable layer
-                        impenetrable_layer_depth = get_value(env_template["params"]["userEnvironmentParameters"]["LeachingDepth"])
-                        layer_depth = 0
-                        for layer in soil_profile:
-                            if layer.get("is_impenetrable", False):
-                                impenetrable_layer_depth = layer_depth
-                                print "setting leaching depth of soil_id:", str(soil_id), "to", impenetrable_layer_depth, "m"
-                                break
-                            layer_depth += get_value(layer["Thickness"])
-                        env_template["params"]["userEnvironmentParameters"]["LeachingDepth"] = [impenetrable_layer_depth, "m"]
+                        if setup["impenetrable-layer"]:
+                            impenetrable_layer_depth = get_value(env_template["params"]["userEnvironmentParameters"]["LeachingDepth"])
+                            layer_depth = 0
+                            for layer in soil_profile:
+                                if layer.get("is_impenetrable", False):
+                                    impenetrable_layer_depth = layer_depth
+                                    print "setting leaching depth of soil_id:", str(soil_id), "to", impenetrable_layer_depth, "m"
+                                    break
+                                layer_depth += get_value(layer["Thickness"])
+                            env_template["params"]["userEnvironmentParameters"]["LeachingDepth"] = [impenetrable_layer_depth, "m"]
+                            env_template["params"]["siteParameters"]["ImpenetrableLayerDepth"] = [impenetrable_layer_depth, "m"]
 
-                        env_template["params"]["siteParameters"]["heightNN"] = heightNN
-                        env_template["params"]["siteParameters"]["slope"] = slope / 100.0
-                        env_template["params"]["siteParameters"]["Latitude"] = clat
+                        if setup["elevation"]:
+                            env_template["params"]["siteParameters"]["heightNN"] = heightNN
+
+                        if setup["slope"]:
+                            env_template["params"]["siteParameters"]["slope"] = slope / 100.0
+
+                        if setup["latitude"]:
+                            env_template["params"]["siteParameters"]["Latitude"] = clat
+
+                        if setup["fertilization"]:
+                            env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = True
+
+                        env_template["params"]["simulationParameters"]["NitrogenResponseOn"] = setup["NitrogenResponseOn"]
+                        env_template["params"]["simulationParameters"]["WaterDeficitResponseOn"] = setup["WaterDeficitResponseOn"]
+                        env_template["params"]["simulationParameters"]["EmergenceMoistureControlOn"] = setup["EmergenceMoistureControlOn"]
+                        env_template["params"]["simulationParameters"]["EmergenceFloodingControlOn"] = setup["EmergenceFloodingControlOn"]
 
                         env_template["csvViaHeaderOptions"] = sim_json["climate.csv-options"]
 

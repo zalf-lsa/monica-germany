@@ -96,28 +96,34 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
     if not hasattr(write_row_to_grids, "nodata_row_count"):
         write_row_to_grids.nodata_row_count = 0
+        write_row_to_grids.list_of_output_files = []
 
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
         "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "total-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        #"avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
         "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
         "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "may-to-harvest-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
         "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1}
+        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
     }
 
     cmc_to_crop = {}
 
+    #is_no_data_row = True
     # skip this part if we write just a nodata line
     if row in row_col_data:
         no_data_cols = 0
@@ -149,8 +155,14 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                                 output_vals[(cm_count, year)][col] = -9999
                                 #no_data_cols += 1
 
-        if no_data_cols == ncols:
+        is_no_data_row = no_data_cols == ncols
+        if is_no_data_row:
             write_row_to_grids.nodata_row_count += 1
+
+    def write_nodata_rows(file_):
+        for _ in range(write_row_to_grids.nodata_row_count):
+            rowstr = " ".join(["-9999" for __ in range(ncols)])
+            file_.write(rowstr +  "\n")
 
     for key, y2d_ in output_grids.iteritems():
 
@@ -171,18 +183,26 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
             if not os.path.isfile(path_to_file):
                 with open(path_to_file, "w") as _:
                     _.write(header)
+                    write_row_to_grids.list_of_output_files.append(path_to_file)
 
-            with open(path_to_file, "a") as _:
+            with open(path_to_file, "a") as file_:
+                write_nodata_rows(file_)
+                rowstr = " ".join(["-9999" if int(x) == -9999 else mold(x) for x in row_arr])
+                file_.write(rowstr +  "\n")
 
-                for ndrc in range(write_row_to_grids.nodata_row_count):
-                    rowstr = " ".join(["-9999" for c in range(ncols)])
-                    _.write(rowstr +  "\n")
-                write_row_to_grids.nodata_row_count = 0
-
-                rowstr = " ".join(map(lambda x: "-9999" if int(x) == -9999 else mold(x), row_arr))
-                _.write(rowstr +  "\n")
-
+    # if we're at the end of the output and just empty lines are left, then they won't be written in the
+    # above manner because there won't be any rows with data where they could be written before
+    # so add no-data rows simply to all files we've written to before
+    if is_no_data_row and write_row_to_grids.list_of_output_files:
+        for path_to_file in write_row_to_grids.list_of_output_files:
+            with open(path_to_file, "a") as file_:
+                write_nodata_rows(file_)
+        write_row_to_grids.nodata_row_count = 0
     
+    # clear the no-data row count when no-data rows have been written before a data row
+    if not is_no_data_row:
+        write_row_to_grids.nodata_row_count = 0
+
     if row in row_col_data:
         del row_col_data[row]
 
@@ -338,7 +358,7 @@ def main():
             soil_id = int(ci_parts[5])
             
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
+            with open("out-normal/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
                 for data_ in result.get("data", []):
