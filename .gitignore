@@ -2,6 +2,7 @@
 out.csv
 monica_io.pyc
 out*
+bkr-avgs*
 .RData
 .RHistory
 landkreise-avgs
@@ -9,3 +10,4 @@ indices-out
 calculate-indices/out/
 calculate-indices/report_indices.csv
 .vscode
+statistical-data-out
