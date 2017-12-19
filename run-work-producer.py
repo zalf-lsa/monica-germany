@@ -119,7 +119,7 @@ def main():
                     if value in ["true", "false"]:
                         value = True if value == "true" else False
                     data[header_col] = row[i]    
-                setups[data["run-id"]] = data
+                setups[int(data["run-id"])] = data
             return setups
 
     setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
@@ -268,8 +268,8 @@ def main():
     climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
 
 
-    crops_ids = [
-        "WW",
+    #crops_ids = [
+    #    "WW",
         #"WB",
         #"SB",
         ##"RY",
@@ -278,7 +278,7 @@ def main():
         #"PO",
         #"SBee",
         #"WRa"
-    ]
+    #]
 
     sent_env_count = 1
     start_time = time.clock()
@@ -354,7 +354,6 @@ def main():
                     break
 
                 for scol in xrange(0, vcols*resolution, resolution):
-
                     unique_jobs = defaultdict(lambda: 0)
 
                     #virtual col
@@ -433,6 +432,7 @@ def main():
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
                         soil_profile = monica_io.find_and_replace_references(sp_json, sp_json)["result"]
+                            
                         env_template["params"]["siteParameters"]["SoilProfileParameters"] = soil_profile
 
                         # setting groundwater level

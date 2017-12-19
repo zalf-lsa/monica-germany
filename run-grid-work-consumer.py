@@ -358,7 +358,7 @@ def main():
             soil_id = int(ci_parts[5])
             
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
+            with open("out-normal/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
                 for data_ in result.get("data", []):
