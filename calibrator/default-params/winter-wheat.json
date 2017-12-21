@@ -9,6 +9,8 @@
 			"variables": "anthesis, maturity"
 		}
 	},
+	"EarlyRefLeafExp": 8,
+	"RefLeafExp": 16,
 	"AssimilatePartitioningCoeff": [
 		[
 			0.5,

@@ -64,7 +64,7 @@ PATHS = {
     }
 }
 
-def main():
+def run_producer(setup = None, custom_crop = None):
     "main"
 
     context = zmq.Context()
@@ -118,12 +118,18 @@ def main():
                     value = row[i]
                     if value in ["true", "false"]:
                         value = True if value == "true" else False
-                    data[header_col] = row[i]    
+                    if i == 0:
+                        value = int(value)
+                    data[header_col] = value 
                 setups[int(data["run-id"])] = data
             return setups
-
-    setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
-    run_setups = [3]
+    
+    if setup:
+        setups = [setup]
+        run_setup = [0]
+    else:
+        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
+        run_setups = [3]
 
 
     def read_header(path_to_ascii_grid_file):
@@ -246,11 +252,14 @@ def main():
         return NearestNDInterpolator(np.array(points), np.array(values))
 
     path_to_dem_grid = paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc"
-    path_to_slope_grid = paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc"
-    dem_slope_metadata, _ = read_header(path_to_dem_grid)
+    dem_metadata, _ = read_header(path_to_dem_grid)
     dem_grid = np.loadtxt(path_to_dem_grid, dtype=int, skiprows=6)
+    dem_gk5_interpolate = create_ascii_grid_interpolator(dem_grid, dem_metadata)
+    
+    path_to_slope_grid = paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc"
+    slope_metadata, _ = read_header(path_to_slope_grid)
     slope_grid = np.loadtxt(path_to_slope_grid, dtype=float, skiprows=6)
-    dem_slope_gk5_interpolate = create_ascii_grid_interpolator(dem_grid, dem_slope_metadata)
+    slope_gk5_interpolate = create_ascii_grid_interpolator(slope_grid, slope_metadata)
 
     path_to_corine_grid = paths["path-to-data-dir"] + "/germany/corine2006_1000_gk5.asc"
     corine_meta, _ = read_header(path_to_corine_grid)
@@ -387,20 +396,22 @@ def main():
                                 #unknown_soil_ids.add(soil_id)
                                 continue
                             
+                            #if col < 275 or col > 325:
+                            #    continue
+
                             #get coordinate of clostest climate element of real soil-cell
                             sh_gk5 = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
                             sr_gk5 = xllcorner + (scellsize / 2) + col * scellsize
                             #inter = crow/ccol encoded into integer
                             crow, ccol = climate_gk5_interpolate(sr_gk5, sh_gk5)
 
-                            if setup["just-agricultural-landuse"]:
+                            if setup["landcover"]:
                                 corine_id = corine_gk5_interpolate(sr_gk5, sh_gk5)
                                 if corine_id < 240 or corine_id > 244:
                                     continue
 
-                            ds_row, ds_col = dem_slope_gk5_interpolate(sr_gk5, sh_gk5)
-                            height_nn = dem_grid[ds_row, ds_col]
-                            slope = slope_grid[ds_row, ds_col]
+                            height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
+                            slope = slope_gk5_interpolate(sr_gk5, sh_gk5)
                             
                             seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
 
@@ -428,7 +439,7 @@ def main():
                         })
 
                     uj_id = 0
-                    for (crow, ccol, soil_id, heightNN, slope, seed_harvest_cs), job in unique_jobs.iteritems():
+                    for (crow, ccol, soil_id, height_nn, slope, seed_harvest_cs), job in unique_jobs.iteritems():
 
                         uj_id += 1
 
@@ -437,15 +448,29 @@ def main():
                         #print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
                         
                         env_template["cropRotation"] = crop_rotation_templates[crop_id]
+                        if custom_crop:
+                            env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
                         
                         # set external seed/harvest dates
                         seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
                         if seed_harvest_data:
                             if setup["sowing-date"] == "fixed":
+                                sds = [int(x) for x in seed_harvest_data["sowing-date"].split("-")]
+                                sd = date(2001, sds[1], sds[2])
+                                sdoy = sd.timetuple().tm_yday
                                 env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
-                            #if setup["harvest-date"]:
-                            #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
-                            #env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
+
+                                if setup["harvest-date"] == "auto":
+                                    hds = [int(x) for x in seed_harvest_data["latest-harvest-date"].split("-")]
+                                    hd = date(2001, hds[1], hds[2])
+                                    hdoy = hd.timetuple().tm_yday
+                                    calc_hd = date(2001, 1, 1) + timedelta(days=min(hdoy-1, sdoy-1-1))
+                                    env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_hd.month, calc_hd.day)
+                            elif setup["harverst-date"] == "fixed":
+                                pass
+                                #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
+                                
+                        env_template["params"]["userCropParameters"]["__enable_T_response_leaf_expansion__"] = setup["LeafExtensionModifier"]
 
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
@@ -481,7 +506,7 @@ def main():
                             env_template["params"]["siteParameters"]["ImpenetrableLayerDepth"] = [impenetrable_layer_depth, "m"]
 
                         if setup["elevation"]:
-                            env_template["params"]["siteParameters"]["heightNN"] = heightNN
+                            env_template["params"]["siteParameters"]["heightNN"] = height_nn
 
                         if setup["slope"]:
                             env_template["params"]["siteParameters"]["slope"] = slope / 100.0
@@ -489,8 +514,8 @@ def main():
                         if setup["latitude"]:
                             env_template["params"]["siteParameters"]["Latitude"] = clat
 
-                        if setup["fertilization"]:
-                            env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = True
+                        env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = setup["fertilization"]
+                       
 
                         env_template["params"]["simulationParameters"]["NitrogenResponseOn"] = setup["NitrogenResponseOn"]
                         env_template["params"]["simulationParameters"]["WaterDeficitResponseOn"] = setup["WaterDeficitResponseOn"]
@@ -531,4 +556,5 @@ def main():
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
     return
 
-main()
+if __name__ == "__main__":
+    run_producer()

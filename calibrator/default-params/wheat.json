@@ -9,6 +9,7 @@
 			"variables": "anthesis, maturity"
 		}
 	},
+	"TransitionStageLeafExp": 2,
 	"AbovegroundOrgan": [
 		false,
 		true,

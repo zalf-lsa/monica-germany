@@ -11,13 +11,19 @@ from threading import Thread
 from collections import defaultdict
 from util_calibrator import *
 import random
+import copy
 
+rme = __import__("run-multivariable-experiments")
 
 class monica_adapter(object):
-    def __init__(self):
+    def __init__(self, setup, custom_crop):
 
         self.all_years = range(1999, 2013) #both obs and sims available for these years!
         self.sim_id = -1
+        self.setup = setup
+        self.custom_crop = copy.deepcopy(custom_crop)
+        self.species_params = self.custom_crop["cropParams"]["species"]
+        self.cultivar_params = self.custom_crop["cropParams"]["cultivar"]
         
         #read observations
         sim_lk = set()
@@ -49,17 +55,6 @@ class monica_adapter(object):
                             obs_yield = float(row[3]) * 100 #kg ha-1
                             self.yield_data[lk][year]["obs"] = obs_yield
         
-        #load default params
-        self.species_params = json.load(open("calibrator/default-params/wheat.json"))
-        self.cultivar_params = json.load(open("calibrator/default-params/winter-wheat.json"))
-        residue_params = json.load(open("calibrator/default-params/wheat-residue.json"))
-
-        #create crop object
-        self.custom_crop = {}
-        self.custom_crop["is-winter-crop"] = True #for WW
-        self.custom_crop["cropParams"] = {}
-        self.custom_crop["residueParams"] = residue_params
-
         #populate observation list
         self.observations = []#for spotpy
 
@@ -118,25 +113,27 @@ class monica_adapter(object):
                 self.cultivar_params)
         
         #customize custom crop
-        self.custom_crop["cropParams"]["species"] = self.species_params
-        self.custom_crop["cropParams"]["cultivar"] = self.cultivar_params
+        #self.custom_crop["cropParams"]["species"] = self.species_params
+        #self.custom_crop["cropParams"]["cultivar"] = self.cultivar_params
         
         #pass custom crop to monica producer/consumer
         #TODO: to be implemented, it will return a dict [year][lk] = simulated yield
-        sim_yield_DE = defaultdict(lambda: defaultdict(float))
+        
+        sim_yield_DE = rme.prod_cons_calib(self.setup, self.custom_crop, self.sim_id)
         #####temporary way to populate sim_yield_DE (for testing)
-        out_dir = "calculate-indices/out/"
-        random_multiplier = random.uniform(0, 2)
-        for filename in os.listdir(out_dir):
-            if "yield" not in filename:
-                continue
-            year = int(filename.split("_")[2])
-            with open(out_dir + filename) as _:
-                reader = csv.reader(_)
-                next(reader, None)
-                for row in reader:
-                    lk = int(row[0])
-                    sim_yield_DE[year][lk] = float(row[1]) * random_multiplier
+        #im_yield_DE = defaultdict(lambda: defaultdict(float))
+        #out_dir = "calculate-indices/out/"
+        #random_multiplier = random.uniform(0, 2)
+        #for filename in os.listdir(out_dir):
+        #    if "yield" not in filename:
+        #        continue
+        #    year = int(filename.split("_")[2])
+        #    with open(out_dir + filename) as _:
+        #        reader = csv.reader(_)
+        #        next(reader, None)
+        #        for row in reader:
+        #            lk = int(row[0])
+        #            sim_yield_DE[year][lk] = float(row[1]) * random_multiplier
 
         for yr in sim_yield_DE:
             for lk in sim_yield_DE[yr]:

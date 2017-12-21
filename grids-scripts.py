@@ -47,7 +47,7 @@ def read_header(path_to_ascii_grid_file):
                 metadata[sline[0].strip().lower()] = float(sline[1].strip())
     return metadata, header_str
 
-def aggregate_by_grid():
+def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern = None):
 
     config = {
         #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
@@ -66,13 +66,21 @@ def aggregate_by_grid():
         "grids-epsg": "31469", #gk5   #wgs84 = 4326
         "corine-epsg": "31469",
 
-        "pattern": "*_yield_*.asc"
+        "pattern": "*_yield_*.asc",
+        #"pattern": "*nfert_avg.asc"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
             k,v = arg.split("=")
             if k in config:
                 config[k] = v
+
+    if path_to_grids_dir:
+        config["path-to-grids-dir"] = path_to_grids_dir
+    if path_to_out_dir:
+        config["path-to-out-dir"] = path_to_out_dir
+    if pattern:
+        config["pattern"] = pattern
 
     def create_integer_grid_interpolator(arr, meta):
         "read an ascii grid into a map, without the no-data values"
@@ -123,9 +131,16 @@ def aggregate_by_grid():
     path_to_grids_dir = config["path-to-grids-dir"]
     path_to_out_dir = config["path-to-out-dir"]
 
+    year_to_agg_id_to_value = {}
+
     for filename in os.listdir(path_to_grids_dir):
         if fnmatch.fnmatch(filename, config["pattern"]):
             print "averaging", path_to_grids_dir, filename
+
+            try:
+                year = int(filename.split("_")[2])
+            except ValueError:
+                year = -1
 
             meta, _ = read_header(path_to_grids_dir + filename)
             
@@ -157,7 +172,7 @@ def aggregate_by_grid():
                     corine_id = int(corine_grid_interpolate(corine_grid_r, corine_grid_h))
 
                     #aggregate just agricultural landuse
-                    if corine_id < 240 or corine_id > 244:
+                    if corine_id in [200, 210, 211, 212, 240, 241, 242, 243, 244]:
                         continue
 
                     agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
@@ -195,7 +210,13 @@ def aggregate_by_grid():
                     if int(arr_template[row, col]) != -9999:
                         arr[row, col] = results.get(int(arr_template[row, col]), -9999)
             np.savetxt(path_to_out_dir + filename[:-4] + "_avgs.asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
-#aggregate_by_grid()
+
+            year_to_agg_id_to_value[year] = results
+
+    return year_to_agg_id_to_value
+
+if __name__ == "__main__":
+    aggregate_by_grid()
 
 def create_lat_dem_per_lk_csv():
 
@@ -292,7 +313,8 @@ def create_lat_dem_per_lk_csv():
             for bkr in sorted(lk_to_bkrs[lk_id]):
                 row.append(bkr)
             csv_writer.writerow(row)
-#create_lat_dem_per_lk_csv()
+if __name__ == "#__main__":
+    create_lat_dem_per_lk_csv()
 
 def write_csv_data_into_landkreis_grid():
 
@@ -345,7 +367,8 @@ def write_csv_data_into_landkreis_grid():
             outfile = full_out_dir + output + ".asc"
             np.savetxt(outfile, grid, header=lk_header.strip(), delimiter=" ", comments="", fmt="%.5f") 
             print "wrote", outfile
-#write_csv_data_into_landkreis_grid()
+if __name__ == "#__main__":
+    write_csv_data_into_landkreis_grid()
 
 def write_grid():
     with open("D:/soil/buek1000/brd/buek1000_50_gk5.asc") as _:
@@ -373,7 +396,8 @@ def write_grid():
         #        _.readline()
 
     print ""
-#write_grid()
+if __name__ == "#__main__":
+    write_grid()
 
 import locale
 def create_kreis_grids_from_statistical_data():
@@ -424,8 +448,8 @@ def create_kreis_grids_from_statistical_data():
                         arr[row, col] = v
 
                 np.savetxt("statistical-data-out/" + crop + "_" + str(year) + ".asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
-#create_kreis_grids_from_statistical_data()            
-            
+if __name__ == "#__main__":
+    create_kreis_grids_from_statistical_data()            
 
 def create_avg_grid(path_to_dir):
 
@@ -453,6 +477,5 @@ def create_avg_grid(path_to_dir):
         acc_arr["arr"] /= acc_arr["count"]
         np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
         print "wrote:", acc_arr["filename"]
-#create_avg_grid("out/")
-
-
+if __name__ == "#__main__": 
+    create_avg_grid("out/")

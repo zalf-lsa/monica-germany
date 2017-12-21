@@ -207,7 +207,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         del row_col_data[row]
 
 
-def main():
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
     "collect data from workers"
 
     config = {
@@ -225,6 +225,14 @@ def main():
                 config[k] = v
 
     paths = PATHS[config["user"]]
+    if path_to_output_dir:
+        paths["local-path-to-output-dir"] = path_to_output_dir
+
+    # 
+    try:
+        os.makedirs(paths["local-path-to-output-dir"])
+    except:
+        pass
 
     data = defaultdict(list)
 
@@ -276,7 +284,7 @@ def main():
             "next-row": int(config["start-row"])
         }
 
-        debug_file = open("debug.out", "w")
+        #debug_file = open("debug.out", "w")
 
 
     while not leave:
@@ -338,6 +346,8 @@ def main():
                 #debug_file.write(debug_msg + "\n")
                 data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 
                 
+                if leave_after_finished_run and data["next-row"] == nrows:
+                    break
                 data["next-row"] += 1 # move to next row (to be written)
 
         elif write_normal_output_files:
@@ -381,8 +391,10 @@ def main():
 
             received_env_count = received_env_count + 1
 
-    debug_file.close()
+    #debug_file.close()
 
-main()
+if __name__ == "__main__":
+    run_consumer()
+#main()
 
 
