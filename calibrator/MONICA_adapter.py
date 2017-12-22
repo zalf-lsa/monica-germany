@@ -13,7 +13,7 @@ from util_calibrator import *
 import random
 import copy
 
-rme = __import__("run-multivariable-experiments")
+from run_producer_consumer_aggregation import prod_cons_calib
 
 class monica_adapter(object):
     def __init__(self, setup, custom_crop):
@@ -119,7 +119,7 @@ class monica_adapter(object):
         #pass custom crop to monica producer/consumer
         #TODO: to be implemented, it will return a dict [year][lk] = simulated yield
         
-        sim_yield_DE = rme.prod_cons_calib(self.setup, self.custom_crop, self.sim_id)
+        sim_yield_DE = prod_cons_calib(self.setup, self.custom_crop, self.sim_id)
         #####temporary way to populate sim_yield_DE (for testing)
         #im_yield_DE = defaultdict(lambda: defaultdict(float))
         #out_dir = "calculate-indices/out/"

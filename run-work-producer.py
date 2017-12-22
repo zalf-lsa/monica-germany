@@ -76,7 +76,7 @@ def run_producer(setup = None, custom_crop = None):
         "port": "6666",
         "no-data-port": "5555",
         "server": "cluster3",
-        "start-row": "0",
+        "start-row": "860",
         "end-row": "-1"
     }
     if len(sys.argv) > 1:
@@ -357,6 +357,18 @@ def run_producer(setup = None, custom_crop = None):
 
             crop_id = setup["crop"]
 
+            # create crop rotation according to setup
+            # get correct template
+            env_template["cropRotation"] = crop_rotation_templates[crop_id]
+
+            # we just got one cultivation method in our rotation
+            worksteps_templates_dict = env_template["cropRotation"][0].pop("worksteps")
+
+            # clear the worksteps array and rebuild it out of the setup      
+            worksteps = env_template["cropRotation"][0]["worksteps"] = []
+            worksteps.append(worksteps_templates_dict["sowing"][setup["sowing-date"]])
+            worksteps.append(worksteps_templates_dict["harvest"][setup["harvest-date"]])
+
             for srow in xrange(0, vrows*resolution, resolution):
 
                 #print "srow:", srow, "crows/cols/lat/lon:", crows_cols
@@ -446,30 +458,73 @@ def run_producer(setup = None, custom_crop = None):
                         clat, clon = cdict[(crow, ccol)]
                         #slon, slat = transform(gk5, wgs84, r, h)
                         #print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
-                        
-                        env_template["cropRotation"] = crop_rotation_templates[crop_id]
+
                         if custom_crop:
                             env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
-                        
+
                         # set external seed/harvest dates
                         seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
                         if seed_harvest_data:
                             if setup["sowing-date"] == "fixed":
-                                sds = [int(x) for x in seed_harvest_data["sowing-date"].split("-")]
-                                sd = date(2001, sds[1], sds[2])
-                                sdoy = sd.timetuple().tm_yday
-                                env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
+                                sowing_date = seed_harvest_data["sowing-date"]
+                            elif setup["sowing-date"] == "auto":
+                                sowing_date = seed_harvest_data["latest-sowing-date"]
 
-                                if setup["harvest-date"] == "auto":
-                                    hds = [int(x) for x in seed_harvest_data["latest-harvest-date"].split("-")]
-                                    hd = date(2001, hds[1], hds[2])
-                                    hdoy = hd.timetuple().tm_yday
-                                    calc_hd = date(2001, 1, 1) + timedelta(days=min(hdoy-1, sdoy-1-1))
-                                    env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_hd.month, calc_hd.day)
-                            elif setup["harverst-date"] == "fixed":
-                                pass
+                            sds = [int(x) for x in sowing_date.split("-")]
+                            sd = date(2001, sds[1], sds[2])
+                            sdoy = sd.timetuple().tm_yday
+
+                            if setup["harvest-date"] == "fixed":
+                                 harvest_date = seed_harvest_data["harvest-date"]                         
+                            elif setup["harvest-date"] == "auto":
+                                harvest_date = seed_harvest_data["latest-harvest-date"]  
+
+                            hds = [int(x) for x in harvest_date.split("-")]
+                            hd = date(2001, hds[1], hds[2])
+                            hdoy = hd.timetuple().tm_yday
+
+                            # sowing after harvest should probably never occur in both fixed setup!
+                            if setup["sowing-date"] == "fixed" and setup["harvest-date"] == "fixed":
+                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
+                                worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+                            
+                            elif setup["sowing-date"] == "fixed" and setup["harvest-date"] == "auto":
+                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
+                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+
+                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "fixed":
+                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"]
+                                calc_sowing_date = date(2000, 12, 31) + timedelta(days=max(hdoy+1, sdoy))
+                                worksteps[0]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(sds[0], calc_sowing_date.month, calc_sowing_date.day)
+                                worksteps[1]["date"] = seed_harvest_data["harvest-date"]
+
+                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
+                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"]
+                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
+                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+
+
+                        #if seed_harvest_data:
+                        #    if setup["sowing-date"] == "fixed":
+                        #        sds = [int(x) for x in seed_harvest_data["sowing-date"].split("-")]
+                        #        sd = date(2001, sds[1], sds[2])
+                        #        sdoy = sd.timetuple().tm_yday
+                        #        env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
+
+                        #        if setup["harvest-date"] == "auto":
+                        #            hds = [int(x) for x in seed_harvest_data["latest-harvest-date"].split("-")]
+                        #            hd = date(2001, hds[1], hds[2])
+                        #            hdoy = hd.timetuple().tm_yday
+                        #            calc_hd = date(2001, 1, 1) + timedelta(days=min(hdoy-1, sdoy-1-1))
+                        #            env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_hd.month, calc_hd.day)
+                        #    elif setup["harverst-date"] == "fixed":
+                        #        pass
                                 #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
-                                
+
+
                         env_template["params"]["userCropParameters"]["__enable_T_response_leaf_expansion__"] = setup["LeafExtensionModifier"]
 
                         # set soil-profile
@@ -515,7 +570,7 @@ def run_producer(setup = None, custom_crop = None):
                             env_template["params"]["siteParameters"]["Latitude"] = clat
 
                         env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = setup["fertilization"]
-                       
+                        env_template["params"]["simulationParameters"]["UseAutomaticIrrigation"] = setup["irrigation"]
 
                         env_template["params"]["simulationParameters"]["NitrogenResponseOn"] = setup["NitrogenResponseOn"]
                         env_template["params"]["simulationParameters"]["WaterDeficitResponseOn"] = setup["WaterDeficitResponseOn"]
