@@ -64,7 +64,7 @@ PATHS = {
     }
 }
 
-def main():
+def run_producer(setup = None, custom_crop = None):
     "main"
 
     context = zmq.Context()
@@ -118,23 +118,34 @@ def main():
                     value = row[i]
                     if value in ["true", "false"]:
                         value = True if value == "true" else False
-                    data[header_col] = row[i]    
+                    if i == 0:
+                        value = int(value)
+                    data[header_col] = value 
                 setups[int(data["run-id"])] = data
             return setups
-
-    setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
-    run_setups = [3]
-
-    def read_grid_meta_data(path_to_asc_file):
-        with open(path_to_asc_file) as _:
-            meta = {}
-            for index, line in enumerate(_):
-                if index > 5: 
-                    break
-                key, value = line.strip().split()
-                meta[key.strip().lower()] = float(value.strip())
-            return meta
     
+    if setup:
+        setups = [setup]
+        run_setup = [0]
+    else:
+        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
+        run_setups = [3]
+
+
+    def read_header(path_to_ascii_grid_file):
+        "read metadata from esri ascii grid file"
+        metadata = {}
+        header_str = ""
+        with open(path_to_ascii_grid_file) as _:
+            for i in range(0, 6):
+                line = _.readline()
+                header_str += line
+                sline = [x for x in line.split() if len(x) > 0]
+                if len(sline) > 1:
+                    metadata[sline[0].strip().lower()] = float(sline[1].strip())
+        return metadata, header_str
+
+
     wgs84 = Proj(init="epsg:4326")
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
@@ -211,38 +222,49 @@ def main():
 
     seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops.csv", wgs84, gk5)
 
-
-    def create_dem_slope_gk5_interpolator(dem_grid, meta):
+    def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
 
-        rows, cols = dem_grid.shape
+        rows, cols = arr.shape
+
+        cellsize = int(meta["cellsize"])
         xll = int(meta["xllcorner"])
         yll = int(meta["yllcorner"])
-        cellsize = int(meta["cellsize"])
-        
+        nodata_value = meta["nodata_value"]
+
+        xll_center = xll + cellsize // 2
+        yll_center = yll + cellsize // 2
+        yul_center = yll_center + (rows - 1)*cellsize
+
         points = []
         values = []
 
-        i = 0
         for row in range(rows):
             for col in range(cols):
-                heightNN = dem_grid[row, col]
-
-                if heightNN < -1000:
+                value = arr[row, col]
+                if ignore_nodata and value == nodata_value:
                     continue
-                
-                r_gk5 = xll + cellsize // 2 + col * cellsize
-                h_gk5 = yll + cellsize // 2 + (rows - row - 1) * cellsize
-                points.append([r_gk5, h_gk5])
-                values.append((row, col))
+                r = xll_center + col * cellsize
+                h = yul_center - row * cellsize
+                points.append([r, h])
+                values.append(value)
 
         return NearestNDInterpolator(np.array(points), np.array(values))
 
-    dem_slope_metadata = read_grid_meta_data(paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc")
-    dem_grid = np.loadtxt(paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc", dtype=int, skiprows=6)
-    slope_grid = np.loadtxt(paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc", dtype=float, skiprows=6)
-    dem_slope_gk5_interpolate = create_dem_slope_gk5_interpolator(dem_grid, dem_slope_metadata)
+    path_to_dem_grid = paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc"
+    dem_metadata, _ = read_header(path_to_dem_grid)
+    dem_grid = np.loadtxt(path_to_dem_grid, dtype=int, skiprows=6)
+    dem_gk5_interpolate = create_ascii_grid_interpolator(dem_grid, dem_metadata)
+    
+    path_to_slope_grid = paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc"
+    slope_metadata, _ = read_header(path_to_slope_grid)
+    slope_grid = np.loadtxt(path_to_slope_grid, dtype=float, skiprows=6)
+    slope_gk5_interpolate = create_ascii_grid_interpolator(slope_grid, slope_metadata)
 
+    path_to_corine_grid = paths["path-to-data-dir"] + "/germany/corine2006_1000_gk5.asc"
+    corine_meta, _ = read_header(path_to_corine_grid)
+    corine_grid = np.loadtxt(path_to_corine_grid, dtype=int, skiprows=6)
+    corine_gk5_interpolate = create_ascii_grid_interpolator(corine_grid, corine_meta)
 
     cdict = {}
     def create_climate_gk5_interpolator_from_json_file(path_to_latlon_to_rowcol_file, wgs84, gk5):
@@ -290,7 +312,7 @@ def main():
         setup = setups[setup_id]
 
         path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
-        soil_meta = read_grid_meta_data(path_to_soil_map)
+        soil_meta, _ = read_header(path_to_soil_map)
         with open(path_to_soil_map) as soil_f:
             for _ in range(0, 6):
                 soil_f.readline()
@@ -374,19 +396,26 @@ def main():
                                 #unknown_soil_ids.add(soil_id)
                                 continue
                             
+                            #if col < 275 or col > 325:
+                            #    continue
+
                             #get coordinate of clostest climate element of real soil-cell
                             sh_gk5 = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
                             sr_gk5 = xllcorner + (scellsize / 2) + col * scellsize
                             #inter = crow/ccol encoded into integer
                             crow, ccol = climate_gk5_interpolate(sr_gk5, sh_gk5)
 
-                            ds_row, ds_col = dem_slope_gk5_interpolate(sr_gk5, sh_gk5)
-                            heightNN = dem_grid[ds_row, ds_col]
-                            slope = slope_grid[ds_row, ds_col]
+                            if setup["landcover"]:
+                                corine_id = corine_gk5_interpolate(sr_gk5, sh_gk5)
+                                if corine_id < 240 or corine_id > 244:
+                                    continue
+
+                            height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
+                            slope = slope_gk5_interpolate(sr_gk5, sh_gk5)
                             
                             seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
 
-                            unique_jobs[(crow, ccol, soil_id, int(round(heightNN/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
+                            unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
 
                             full_no_data_block = False
 
@@ -410,7 +439,7 @@ def main():
                         })
 
                     uj_id = 0
-                    for (crow, ccol, soil_id, heightNN, slope, seed_harvest_cs), job in unique_jobs.iteritems():
+                    for (crow, ccol, soil_id, height_nn, slope, seed_harvest_cs), job in unique_jobs.iteritems():
 
                         uj_id += 1
 
@@ -419,15 +448,29 @@ def main():
                         #print "srow:", srow, "scol:", scol, "h:", h, "r:", r, " inter:", inter, "crow:", crow, "ccol:", ccol, "slat:", slat, "slon:", slon, "clat:", clat, "clon:", clon
                         
                         env_template["cropRotation"] = crop_rotation_templates[crop_id]
+                        if custom_crop:
+                            env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
                         
                         # set external seed/harvest dates
                         seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
                         if seed_harvest_data:
                             if setup["sowing-date"] == "fixed":
+                                sds = [int(x) for x in seed_harvest_data["sowing-date"].split("-")]
+                                sd = date(2001, sds[1], sds[2])
+                                sdoy = sd.timetuple().tm_yday
                                 env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
-                            #if setup["harvest-date"]:
-                            #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
-                            #env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = seed_harvest_data["latest-harvest-date"]
+
+                                if setup["harvest-date"] == "auto":
+                                    hds = [int(x) for x in seed_harvest_data["latest-harvest-date"].split("-")]
+                                    hd = date(2001, hds[1], hds[2])
+                                    hdoy = hd.timetuple().tm_yday
+                                    calc_hd = date(2001, 1, 1) + timedelta(days=min(hdoy-1, sdoy-1-1))
+                                    env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_hd.month, calc_hd.day)
+                            elif setup["harverst-date"] == "fixed":
+                                pass
+                                #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
+                                
+                        env_template["params"]["userCropParameters"]["__enable_T_response_leaf_expansion__"] = setup["LeafExtensionModifier"]
 
                         # set soil-profile
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
@@ -463,7 +506,7 @@ def main():
                             env_template["params"]["siteParameters"]["ImpenetrableLayerDepth"] = [impenetrable_layer_depth, "m"]
 
                         if setup["elevation"]:
-                            env_template["params"]["siteParameters"]["heightNN"] = heightNN
+                            env_template["params"]["siteParameters"]["heightNN"] = height_nn
 
                         if setup["slope"]:
                             env_template["params"]["siteParameters"]["slope"] = slope / 100.0
@@ -471,8 +514,8 @@ def main():
                         if setup["latitude"]:
                             env_template["params"]["siteParameters"]["Latitude"] = clat
 
-                        if setup["fertilization"]:
-                            env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = True
+                        env_template["params"]["simulationParameters"]["UseNMinMineralFertilisingMethod"] = setup["fertilization"]
+                       
 
                         env_template["params"]["simulationParameters"]["NitrogenResponseOn"] = setup["NitrogenResponseOn"]
                         env_template["params"]["simulationParameters"]["WaterDeficitResponseOn"] = setup["WaterDeficitResponseOn"]
@@ -513,4 +556,5 @@ def main():
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
     return
 
-main()
+if __name__ == "__main__":
+    run_producer()
