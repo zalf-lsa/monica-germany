@@ -24,12 +24,12 @@ def start_calibration(setup, custom_crop):
             p={}
             p["name"] = row[0]
             p["array"] = row[1]
-            p["low"] = row[2]
-            p["high"] = row[3]
-            p["stepsize"] = row[4]
-            p["optguess"] = row[5]
-            p["minbound"] = row[6]
-            p["maxbound"] = row[7]
+            p["low"] = float(row[2])
+            p["high"] = float(row[3])
+            p["stepsize"] = float(row[4])
+            p["optguess"] = float(row[5])
+            p["minbound"] = float(row[6])
+            p["maxbound"] = float(row[7])
             if len(row) == 9 and row[8] != "":
                 p["derive_function"] = make_lambda(row[8])
             params.append(p)

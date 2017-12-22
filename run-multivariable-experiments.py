@@ -84,6 +84,8 @@ def main():
 
     best_calibs = {}
     for run_id, setup in setups.iteritems():
+        if run_id != 25:
+            continue
         if setup["Calibration"]:
             best_calibs[run_id] = start_calibration(setup, custom_crop)
         else:
