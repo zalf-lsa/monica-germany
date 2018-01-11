@@ -215,7 +215,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
         "port": "7777",
         "no-data-port": "5555",
         "server": "cluster3", 
-        "start-row": "0",
+        "start-row": "860",
         "end-row": "-1"
     }
     if len(sys.argv) > 1:
@@ -263,7 +263,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
             except:
                 continue
             
-        nrows = int(msg["nrows"])
+        nrows = 19 #int(msg["nrows"])
         ncols = int(msg["ncols"])
         cellsize = int(msg["cellsize"])
         xllcorner = int(msg["xllcorner"])
@@ -315,7 +315,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
                 #print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["jobs-per-cell-count"][row][col] += 1 + result["count"]
-                print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
+                #print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
             elif result.get("type", "") == "no-data":
                 debug_msg = "received no-data message customId: " + result.get("customId", "") \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
@@ -329,7 +329,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
                 #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
-                print debug_msg
+                #print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["row-col-data"][row][col].append(create_output(result))
                 data["jobs-per-cell-count"][row][col] -= 1
@@ -342,11 +342,11 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
                 write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
                 debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
-                print debug_msg
+                #print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 
                 
-                if leave_after_finished_run and data["next-row"] == nrows:
+                if leave_after_finished_run and data["next-row"] == 879:#(nrows-1):
                     break
                 data["next-row"] += 1 # move to next row (to be written)
 

@@ -125,8 +125,8 @@ def run_producer(setup = None, custom_crop = None):
             return setups
     
     if setup:
-        setups = [setup]
-        run_setup = [0]
+        setups = {0: setup}
+        run_setups = [0]
     else:
         setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
         run_setups = [3]
@@ -506,24 +506,7 @@ def run_producer(setup = None, custom_crop = None):
                                 worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
-
-                        #if seed_harvest_data:
-                        #    if setup["sowing-date"] == "fixed":
-                        #        sds = [int(x) for x in seed_harvest_data["sowing-date"].split("-")]
-                        #        sd = date(2001, sds[1], sds[2])
-                        #        sdoy = sd.timetuple().tm_yday
-                        #        env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["sowing-date"]
-
-                        #        if setup["harvest-date"] == "auto":
-                        #            hds = [int(x) for x in seed_harvest_data["latest-harvest-date"].split("-")]
-                        #            hd = date(2001, hds[1], hds[2])
-                        #            hdoy = hd.timetuple().tm_yday
-                        #            calc_hd = date(2001, 1, 1) + timedelta(days=min(hdoy-1, sdoy-1-1))
-                        #            env_template["cropRotation"][0]["worksteps"][1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_hd.month, calc_hd.day)
-                        #    elif setup["harverst-date"] == "fixed":
-                        #        pass
-                                #env_template["cropRotation"][0]["worksteps"][1]["date"] = seed_harvest_data["harvest-date"]
-
+                        print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
 
                         env_template["params"]["userCropParameters"]["__enable_T_response_leaf_expansion__"] = setup["LeafExtensionModifier"]
 
@@ -593,11 +576,11 @@ def run_producer(setup = None, custom_crop = None):
                         + "|" + crop_id \
                         + "|" + str(uj_id)
 
-                        #with open("envs/env-"+str(i)+".json", "w") as _: 
+                        #with open("envs/env-"+str(sent_env_count)+".json", "w") as _: 
                         #    _.write(json.dumps(env))
 
                         socket.send_json(env_template)
-                        print "sent env ", sent_env_count, " customId: ", env_template["customId"]
+                        #print "sent env ", sent_env_count, " customId: ", env_template["customId"]
                         #exit()
                         sent_env_count += 1
 

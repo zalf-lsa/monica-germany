@@ -24,15 +24,29 @@ import sys
 print sys.path
 
 from multiprocessing import Process
+import threading
+from threading import Thread
 
 rwp = __import__("run-work-producer")
 rwc = __import__("run-grid-work-consumer")
 gs = __import__("grids-scripts")
 
+
+class FuncThread(threading.Thread):
+    def __init__(self, target, *args):
+        self._target = target
+        self._args = args
+        threading.Thread.__init__(self)
+ 
+    def run(self):
+        self._target(*self._args)
+
+
 def prod_cons_calib(design_setup, custom_crop, calib_id="no_calibration"):
 
     setup = {
         "run-id": design_setup["run.no"],
+        "crop": "WW",
         "groundwater-level": design_setup["GroundWaterLevel"],
         "impenetrable-layer": design_setup["ImpenetrableLayer"],
         "elevation": True,
@@ -51,8 +65,12 @@ def prod_cons_calib(design_setup, custom_crop, calib_id="no_calibration"):
     }
 
     path_to_grids_output = str(setup["run-id"]) + "/" + str(calib_id) + "/"
-    producer = Process(target=rwp.run_producer, args=(setup, custom_crop))
+    #producer = Process(target=rwp.run_producer, args=(setup, custom_crop))
     consumer = Process(target=rwc.run_consumer, args=(path_to_grids_output, True))
+    producer = FuncThread(rwp.run_producer, setup, custom_crop)
+    producer.daemon = True
+    #consumer = FuncThread(rwc.run_consumer, path_to_grids_output, True)
+    #consumer.daemon = True
     producer.start()
     consumer.start()
     producer.join()
