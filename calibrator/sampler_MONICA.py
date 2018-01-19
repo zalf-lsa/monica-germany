@@ -11,7 +11,7 @@ import csv
 def make_lambda(excel):
     return lambda v, p: eval(excel)
 
-def start_calibration(setup, custom_crop):
+def start_calibration(setup, custom_crop, server):
 
     #read params to be calibrated
     params = []
@@ -34,7 +34,7 @@ def start_calibration(setup, custom_crop):
                 p["derive_function"] = make_lambda(row[8])
             params.append(p)
 
-    spot_setup = spotpy_setup_MONICA.spot_setup(params, setup, custom_crop)
+    spot_setup = spotpy_setup_MONICA.spot_setup(params, setup, custom_crop, server)
     rep = 10
 
     sampler = spotpy.algorithms.sceua(spot_setup, dbname='SCEUA', dbformat='ram')

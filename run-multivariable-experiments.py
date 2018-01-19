@@ -27,9 +27,9 @@ from collections import defaultdict
 #import types
 import sys
 sys.path.append("./calibrator")
-print sys.path
+#print sys.path
 import zmq
-print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
+#print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
 
 import sqlite3
 import numpy as np
@@ -42,6 +42,15 @@ from sampler_MONICA import start_calibration
 from run_producer_consumer_aggregation import prod_cons_calib
 
 def main():
+
+    config = {
+        "server": "cluster2"
+    }
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            k,v = arg.split("=")
+            if k in config:
+                config[k] = v
 
     #load default params
     with open("calibrator/default-params/wheat.json") as _:
@@ -56,7 +65,20 @@ def main():
         "is-winter-crop": True,
         "cropParams": {
             "species": species_params,
-            "cultivar": cultivar_params
+            "cultivar": {
+                "=": cultivar_params,
+                "StageTemperatureSum": [
+                    [
+                        150, 
+                        577, 
+                        531, 
+                        155, 
+                        135, 
+                        25
+                    ], 
+                    "°C d"
+                ]
+            }
         },
         "residueParams": residue_params
     }
@@ -80,16 +102,17 @@ def main():
                 setups[int(data["run.no"])] = data
             return setups
 
-    setups = read_design_csv("design.csv")
+    setups = read_design_csv("P:/monica-germany/design_nocalib.csv")
 
     best_calibs = {}
     for run_id, setup in setups.iteritems():
-        if run_id != 25:
+        #if run_id != 177:
+        #    continue
+        if setup.get("Calibration", False):
             continue
-        if setup["Calibration"]:
-            best_calibs[run_id] = start_calibration(setup, custom_crop)
+            best_calibs[run_id] = start_calibration(setup=setup, custom_crop=custom_crop, server=config["server"])
         else:
-            prod_cons_calib(setup, custom_crop)
+            prod_cons_calib(design_setup=setup, custom_crop=custom_crop, server=config["server"])
 
     with open("best_calibrations.csv", "w") as _:
         json.dump(best_calibs, _, indent=4, sort_keys=True)
@@ -97,4 +120,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

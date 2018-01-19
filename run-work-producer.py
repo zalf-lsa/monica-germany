@@ -26,9 +26,9 @@ from datetime import date, datetime, timedelta
 from collections import defaultdict
 #import types
 import sys
-print sys.path
+#print sys.path
 import zmq
-print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
+#print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
 
 import sqlite3
 import numpy as np
@@ -64,7 +64,7 @@ PATHS = {
     }
 }
 
-def run_producer(setup = None, custom_crop = None):
+def run_producer(setup = None, custom_crop = None, server = None):
     "main"
 
     context = zmq.Context()
@@ -75,13 +75,13 @@ def run_producer(setup = None, custom_crop = None):
         "user": "berg-lc",
         "port": "6666",
         "no-data-port": "5555",
-        "server": "cluster3",
-        "start-row": "860",
-        "end-row": "-1"
+        "server": server if server else "cluster3",
+        "start-row": "0", #"860", #"0",
+        "end-row": "-1" #"861"#"-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
-            k,v = arg.split("=")
+            k, v = arg.split("=")
             if k in config:
                 config[k] = v
 
@@ -305,6 +305,8 @@ def run_producer(setup = None, custom_crop = None):
     sent_env_count = 1
     start_time = time.clock()
 
+    #c = 0
+
     for setup_id in run_setups:
 
         if setup_id not in setups:
@@ -353,7 +355,7 @@ def run_producer(setup = None, custom_crop = None):
             def get_value(list_or_value):
                 return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
 
-            crows_cols = set()
+            #crows_cols = set()
 
             crop_id = setup["crop"]
 
@@ -408,9 +410,6 @@ def run_producer(setup = None, custom_crop = None):
                                 #unknown_soil_ids.add(soil_id)
                                 continue
                             
-                            #if col < 275 or col > 325:
-                            #    continue
-
                             #get coordinate of clostest climate element of real soil-cell
                             sh_gk5 = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
                             sr_gk5 = xllcorner + (scellsize / 2) + col * scellsize
@@ -419,7 +418,7 @@ def run_producer(setup = None, custom_crop = None):
 
                             if setup["landcover"]:
                                 corine_id = corine_gk5_interpolate(sr_gk5, sh_gk5)
-                                if corine_id < 240 or corine_id > 244:
+                                if corine_id not in [200, 210, 211, 212, 240, 241, 242, 243, 244]:
                                     continue
 
                             height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
@@ -428,6 +427,8 @@ def run_producer(setup = None, custom_crop = None):
                             seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
 
                             unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
+
+                            #print "scol:", scol, "vcol:", vcol, "crow/col:", (crow, ccol), "unique_jobs:", (crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)
 
                             full_no_data_block = False
 
@@ -506,7 +507,18 @@ def run_producer(setup = None, custom_crop = None):
                                 worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
-                        print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
+                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
+
+                        #print "sowing:", worksteps[0], "harvest:", worksteps[1]
+                        
+                        #with open("dump-" + str(c) + ".json", "w") as jdf:
+                        #    json.dump({"id": (str(resolution) \
+                        #        + "|" + str(vrow) + "|" + str(vcol) \
+                        #        + "|" + str(crow) + "|" + str(ccol) \
+                        #        + "|" + str(soil_id) \
+                        #        + "|" + crop_id \
+                        #        + "|" + str(uj_id)), "sowing": worksteps[0], "harvest": worksteps[1]}, jdf, indent=2)
+                        #    c += 1
 
                         env_template["params"]["userCropParameters"]["__enable_T_response_leaf_expansion__"] = setup["LeafExtensionModifier"]
 
@@ -514,6 +526,8 @@ def run_producer(setup = None, custom_crop = None):
                         sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
                         soil_profile = monica_io.find_and_replace_references(sp_json, sp_json)["result"]
                             
+                        #print "soil:", soil_profile
+
                         env_template["params"]["siteParameters"]["SoilProfileParameters"] = soil_profile
 
                         # setting groundwater level
@@ -523,7 +537,7 @@ def run_producer(setup = None, custom_crop = None):
                             for layer in soil_profile:
                                 if layer.get("is_in_groundwater", False):
                                     groundwaterlevel = layer_depth
-                                    print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
+                                    #print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
                                     break
                                 layer_depth += get_value(layer["Thickness"])
                             env_template["params"]["userEnvironmentParameters"]["MinGroundwaterDepthMonth"] = 3
@@ -537,7 +551,7 @@ def run_producer(setup = None, custom_crop = None):
                             for layer in soil_profile:
                                 if layer.get("is_impenetrable", False):
                                     impenetrable_layer_depth = layer_depth
-                                    print "setting leaching depth of soil_id:", str(soil_id), "to", impenetrable_layer_depth, "m"
+                                    #print "setting leaching depth of soil_id:", str(soil_id), "to", impenetrable_layer_depth, "m"
                                     break
                                 layer_depth += get_value(layer["Thickness"])
                             env_template["params"]["userEnvironmentParameters"]["LeachingDepth"] = [impenetrable_layer_depth, "m"]
@@ -586,13 +600,13 @@ def run_producer(setup = None, custom_crop = None):
 
             #print "unknown_soil_ids:", unknown_soil_ids
 
-            print "crows/cols:", crows_cols
+            #print "crows/cols:", crows_cols
 
     stop_time = time.clock()
 
     print "sending ", (sent_env_count-1), " envs took ", (stop_time - start_time), " seconds"
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
-    return
+    print "exiting run_producer()"
 
 if __name__ == "__main__":
     run_producer()

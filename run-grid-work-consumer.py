@@ -19,7 +19,7 @@ import sys
 #sys.path.insert(0, "C:\\Users\\berg.ZALF-AD\\GitHub\\monica\\project-files\\Win32\\Release")
 #sys.path.insert(0, "C:\\Users\\berg.ZALF-AD\\GitHub\\monica\\src\\python")
 #sys.path.insert(0, "C:\\Program Files (x86)\\MONICA")
-print sys.path
+#print sys.path
 
 import gc
 import csv
@@ -31,7 +31,7 @@ from collections import defaultdict, OrderedDict
 import numpy as np
 
 import zmq
-print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
+#print "pyzmq version: ", zmq.pyzmq_version(), " zmq version: ", zmq.zmq_version()
 
 import monica_io
 #print "path to monica_io: ", monica_io.__file__
@@ -101,24 +101,24 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
-        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}#,
+#        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+#        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
         #"avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
         #"avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
         #"avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+#        "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+#        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
+#        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+#        "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+#        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
     }
 
     cmc_to_crop = {}
@@ -207,16 +207,16 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         del row_col_data[row]
 
 
-def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = None):
     "collect data from workers"
 
     config = {
         "user": "berg-lc",
         "port": "7777",
         "no-data-port": "5555",
-        "server": "cluster3", 
-        "start-row": "860",
-        "end-row": "-1"
+        "server": server if server else "cluster3", 
+        "start-row": "0", #"860", #"0",
+        "end-row": "-1" #"861" #"-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -228,13 +228,14 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
     if path_to_output_dir:
         paths["local-path-to-output-dir"] = path_to_output_dir
 
-    # 
     try:
         os.makedirs(paths["local-path-to-output-dir"])
     except:
         pass
 
     data = defaultdict(list)
+
+    print "consumer config:", config
 
     received_env_count = 1
     context = zmq.Context()
@@ -263,7 +264,9 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
             except:
                 continue
             
-        nrows = 19 #int(msg["nrows"])
+        start_row = int(config["start-row"])
+        end_row = int(config["end-row"])    
+        nrows = end_row - start_row + 1 if start_row > 0 and end_row >= start_row else int(msg["nrows"])
         ncols = int(msg["ncols"])
         cellsize = int(msg["cellsize"])
         xllcorner = int(msg["xllcorner"])
@@ -281,7 +284,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
             "row-col-data": defaultdict(lambda: defaultdict(list)),
             "datacell-count": defaultdict(lambda: ncols),
             "jobs-per-cell-count": defaultdict(lambda: defaultdict(lambda: -1)),
-            "next-row": int(config["start-row"])
+            "next-row": start_row
         }
 
         #debug_file = open("debug.out", "w")
@@ -342,14 +345,17 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
                 write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
                 debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
-                #print debug_msg
+                print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 
                 
-                if leave_after_finished_run and data["next-row"] == 879:#(nrows-1):
-                    break
                 data["next-row"] += 1 # move to next row (to be written)
 
+                if leave_after_finished_run and ((end_row < 0 and data["next-row"] > nrows-1) or (end_row >= 0 and data["next-row"] > end_row)): 
+                    print "all results received, exiting"
+                    leave = True
+                    break
+                
         elif write_normal_output_files:
 
             if result.get("type", "") in ["jobs-per-cell", "no-data", "target-grid-metadata"]:
@@ -391,6 +397,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = False):
 
             received_env_count = received_env_count + 1
 
+    print "exiting run_consumer()"
     #debug_file.close()
 
 if __name__ == "__main__":

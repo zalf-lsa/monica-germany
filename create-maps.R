@@ -40,7 +40,7 @@ setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/statistical-data-out/")
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/indices-out/indices-1-2017-12-14/")
 setwd("P:/monica-germany/statistical-data/grids")
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/out/")
-files <- list.files(path=".", pattern=glob2rx("*sum-nleach*.asc"), full.names=F, recursive=FALSE)
+files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
 for(filename in files)
 {
   out_filename = str_replace(filename, "asc", "png")
@@ -48,7 +48,7 @@ for(filename in files)
   png(out_filename, width=2000, height=2000, pointsize=30)
   r <- raster(filename)
   #r[r > 1000] <- r@file@nodatavalue #nfert
-  r[r < 0 | r > 2000] <- r@file@nodatavalue #nleach
+  #r[r < 0 | r > 2000] <- r@file@nodatavalue #nleach
   #plot(r, col=rev(terrain.colors(99)), breaks=seq(0, 200, length.out=100), legend=F)
   #plot(r, col=rev(terrain.colors(5)), breaks=seq(0, 200, length.out=6), legend.only=T)
   plot(r, main=out_filename)
@@ -56,14 +56,14 @@ for(filename in files)
   dev.off()
 }
 
-filename = "C:/Users/berg.ZALF-AD/GitHub/monica-germany/out/wheatwinterwheat_yearly-avg-tavg_1997_2.asc"
+filename = "C:/Users/berg.ZALF-AD/GitHub/monica-germany/wheatwinterwheat_yearly-sum-nleach_1997_2.asc"
 out_filename = str_replace(filename, "asc", "png")
 print(out_filename)
 png(out_filename, width=2000, height=2000, pointsize=30)
 r <- raster(filename)
 r[r > 1000] <- r@file@nodatavalue
-plot(r, main="bla")
-dev.off
+plot(r, main=out_filename)
+dev.off()
 
 
 

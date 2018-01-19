@@ -8,7 +8,7 @@ import MONICA_adapter
 import re
 
 class spot_setup(object):
-    def __init__(self, user_params, setup, custom_crop):
+    def __init__(self, user_params, setup, custom_crop, server):
         self.user_params = user_params
         self.params = []
         for par in user_params:
@@ -17,7 +17,7 @@ class spot_setup(object):
                 parname += "_" + par["array"] #spotpy does not allow two parameters to have the same name
             if "derive_function" not in par: #spotpy does not care about derived params
                 self.params.append(spotpy.parameter.Uniform(parname, par["low"], par["high"], par["stepsize"], par["optguess"], par["minbound"], par["maxbound"]))
-        self.monica_model = MONICA_adapter.monica_adapter(setup, custom_crop)
+        self.monica_model = MONICA_adapter.monica_adapter(setup, custom_crop, server)
 
     def parameters(self):
         return spotpy.parameter.generate(self.params)

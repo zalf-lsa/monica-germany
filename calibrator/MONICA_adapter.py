@@ -16,7 +16,7 @@ import copy
 from run_producer_consumer_aggregation import prod_cons_calib
 
 class monica_adapter(object):
-    def __init__(self, setup, custom_crop):
+    def __init__(self, setup, custom_crop, server):
 
         self.all_years = range(1999, 2013) #both obs and sims available for these years!
         self.sim_id = -1
@@ -24,6 +24,7 @@ class monica_adapter(object):
         self.custom_crop = copy.deepcopy(custom_crop)
         self.species_params = self.custom_crop["cropParams"]["species"]
         self.cultivar_params = self.custom_crop["cropParams"]["cultivar"]
+        self.server = server
         
         #read observations
         sim_lk = set()
@@ -119,7 +120,7 @@ class monica_adapter(object):
         #pass custom crop to monica producer/consumer
         #TODO: to be implemented, it will return a dict [year][lk] = simulated yield
         
-        sim_yield_DE = prod_cons_calib(self.setup, self.custom_crop, self.sim_id)
+        sim_yield_DE = prod_cons_calib(self.setup, self.custom_crop, self.server, self.sim_id)
         #####temporary way to populate sim_yield_DE (for testing)
         #im_yield_DE = defaultdict(lambda: defaultdict(float))
         #out_dir = "calculate-indices/out/"
@@ -142,8 +143,9 @@ class monica_adapter(object):
         #populate evallist
         for lk in self.obs_lks:
             yrs = find_obs_years(id=lk, data=self.yield_data, yr_range=self.all_years)
-            obs = retrieve_data(ids=[lk], years=yrs, data=self.yield_data, obs_sim="sim")
-            evallist += obs
+            sim = retrieve_data(ids=[lk], years=yrs, data=self.yield_data, obs_sim="sim")
+            #sim = retrieve_data(ids=[lk], years=yrs, data=self.yield_data, obs_sim="obs") #use the observations as sim
+            evallist += sim
         #print len(evallist)
 
         return evallist

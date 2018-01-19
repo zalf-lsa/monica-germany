@@ -21,7 +21,8 @@ import csv
 import copy
 from collections import defaultdict
 import sys
-print sys.path
+from glob import glob
+#print sys.path
 
 from multiprocessing import Process
 import threading
@@ -30,6 +31,11 @@ from threading import Thread
 rwp = __import__("run-work-producer")
 rwc = __import__("run-grid-work-consumer")
 gs = __import__("grids-scripts")
+
+
+def delete_files_in_dir(dir_, pattern):
+    for path in glob(dir_ + pattern):
+        os.remove(path)
 
 
 class FuncThread(threading.Thread):
@@ -42,7 +48,7 @@ class FuncThread(threading.Thread):
         self._target(*self._args)
 
 
-def prod_cons_calib(design_setup, custom_crop, calib_id="no_calibration"):
+def prod_cons_calib(design_setup, custom_crop, server, calib_id="no_calibration"):
 
     setup = {
         "run-id": design_setup["run.no"],
@@ -63,20 +69,30 @@ def prod_cons_calib(design_setup, custom_crop, calib_id="no_calibration"):
         "EmergenceMoistureControlOn": False,
         "EmergenceFloodingControlOn": False
     }
-
+    
     path_to_grids_output = str(setup["run-id"]) + "/" + str(calib_id) + "/"
-    #producer = Process(target=rwp.run_producer, args=(setup, custom_crop))
-    consumer = Process(target=rwc.run_consumer, args=(path_to_grids_output, True))
-    producer = FuncThread(rwp.run_producer, setup, custom_crop)
-    producer.daemon = True
+
+    #clear directory first
+    delete_files_in_dir(path_to_grids_output, "*.asc")
+
+    producer = Process(target=rwp.run_producer, args=(setup, custom_crop, server))
+    consumer = Process(target=rwc.run_consumer, args=(path_to_grids_output, True, server))
+    #producer = FuncThread(rwp.run_producer, setup, custom_crop)
     #consumer = FuncThread(rwc.run_consumer, path_to_grids_output, True)
-    #consumer.daemon = True
+    producer.daemon = True
+    consumer.daemon = True
     producer.start()
     consumer.start()
     producer.join()
     consumer.join()
 
     path_to_aggregated_output = path_to_grids_output + "aggregated/"
+    if not os.path.exists(path_to_aggregated_output):
+        os.makedirs(path_to_aggregated_output)
+
+    #clear directory first
+    delete_files_in_dir(path_to_aggregated_output, "*")
+
     year_to_lk_to_value = gs.aggregate_by_grid(path_to_grids_dir=path_to_grids_output,
                                                path_to_out_dir=path_to_aggregated_output,
                                                pattern="*_yield_*.asc")

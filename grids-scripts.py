@@ -28,7 +28,7 @@ from collections import defaultdict
 #import types
 import sys
 import fnmatch
-print sys.path
+#print sys.path
 
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
@@ -51,7 +51,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     config = {
         #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
-        "path-to-grids-dir": "out/",
+        "path-to-grids-dir": "3/no_calibration/", #"out/",
         
         "path-to-agg-grid": "N:/germany/landkreise_1000_gk3.asc",
         "path-to-agg2-grid": "N:/germany/bkr_1000_gk3.asc",
@@ -112,10 +112,10 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
     arr_template = np.loadtxt(path_to_agg_grid, skiprows=6)
     agg_grid_interpolate = create_integer_grid_interpolator(arr_template, agg_meta)
 
-    path_to_agg2_grid = config["path-to-agg2-grid"]
-    agg2_meta, _ = read_header(path_to_agg_grid)
-    arr2_template = np.loadtxt(path_to_agg2_grid, skiprows=6)
-    agg2_grid_interpolate = create_integer_grid_interpolator(arr2_template, agg2_meta)
+    #path_to_agg2_grid = config["path-to-agg2-grid"]
+    #agg2_meta, _ = read_header(path_to_agg_grid)
+    #arr2_template = np.loadtxt(path_to_agg2_grid, skiprows=6)
+    #agg2_grid_interpolate = create_integer_grid_interpolator(arr2_template, agg2_meta)
 
     path_to_corine_grid = config["path-to-corine-grid"]
     corine_meta, _ = read_header(path_to_corine_grid)
@@ -124,7 +124,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     #wgs84 = Proj(init="epsg:4326")
     agg_grid_proj = Proj(init="epsg:" + config["agg-grid-epsg"])
-    agg2_grid_proj = Proj(init="epsg:" + config["agg2-grid-epsg"])
+    #agg2_grid_proj = Proj(init="epsg:" + config["agg2-grid-epsg"])
     grids_proj = Proj(init="epsg:" + config["grids-epsg"])
     corine_proj = Proj(init="epsg:" + config["corine-epsg"])
 
@@ -157,7 +157,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
             agg_to_agg2 = defaultdict(set)
 
-            print rows,
+            #print rows,
             for row in range(rows):
                 for col in range(cols):
 
@@ -172,23 +172,23 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
                     corine_id = int(corine_grid_interpolate(corine_grid_r, corine_grid_h))
 
                     #aggregate just agricultural landuse
-                    if corine_id in [200, 210, 211, 212, 240, 241, 242, 243, 244]:
+                    if corine_id not in [200, 210, 211, 212, 240, 241, 242, 243, 244]:
                         continue
 
                     agg_grid_r, agg_grid_h = transform(grids_proj, agg_grid_proj, grid_r, grid_h)
                     agg_id = int(agg_grid_interpolate(agg_grid_r, agg_grid_h))
 
-                    agg2_grid_r, agg2_grid_h = transform(grids_proj, agg2_grid_proj, grid_r, grid_h)
-                    agg2_id = int(agg2_grid_interpolate(agg2_grid_r, agg2_grid_h))
+                    #agg2_grid_r, agg2_grid_h = transform(grids_proj, agg2_grid_proj, grid_r, grid_h)
+                    #agg2_id = int(agg2_grid_interpolate(agg2_grid_r, agg2_grid_h))
 
-                    agg_to_agg2[agg_id].add(agg2_id)
+                    #agg_to_agg2[agg_id].add(agg2_id)
 
                     sums[agg_id] += arr[row, col]
                     counts[agg_id] += 1
                 
-                if row % 10 == 0:
-                    print row,
-            print ""
+                #if row % 10 == 0:
+                #    print row,
+            #print ""
 
             results = {}
             for id, sum_ in sums.iteritems():
@@ -196,11 +196,11 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
             with open(path_to_out_dir + filename[:-4] + "_avgs.csv", "wb") as _:
                 csv_writer = csv.writer(_)
-                csv_writer.writerow(["id", "value", "id2..."])
+                csv_writer.writerow(["id", "value"])#, "id2..."])
                 for id in sorted(results.keys()):
                     row = [id, round(results[id], 1)]
-                    for id2 in sorted(agg_to_agg2[id]):
-                        row.append(id2)
+                    #for id2 in sorted(agg_to_agg2[id]):
+                    #    row.append(id2)
                     csv_writer.writerow(row)
 
             arr = np.full(arr_template.shape, -9999, dtype=float)
