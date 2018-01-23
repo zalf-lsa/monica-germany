@@ -64,7 +64,7 @@ PATHS = {
     }
 }
 
-def run_producer(setup = None, custom_crop = None, server = None):
+def run_producer(setup = None, custom_crop = None, server = {"server": None, "port": None, "nd-port": None}):
     "main"
 
     context = zmq.Context()
@@ -73,11 +73,11 @@ def run_producer(setup = None, custom_crop = None, server = None):
 
     config = {
         "user": "berg-lc",
-        "port": "6666",
-        "no-data-port": "5555",
-        "server": server if server else "cluster3",
-        "start-row": "0", #"860", #"0",
-        "end-row": "-1" #"861"#"-1"
+        "port": server["port"] if server["port"] else "6666",
+        "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
+        "server": server["server"] if server["server"] else "cluster3",
+        "start-row": "0",
+        "end-row": "-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -95,7 +95,6 @@ def run_producer(setup = None, custom_crop = None, server = None):
         socket.connect("tcp://localhost:" + str(config["port"]))
     else:
         socket.connect("tcp://" + config["server"] + ":" + str(config["port"]))
-
 
     with open("sim.json") as _:
         sim_json = json.load(_)
@@ -220,7 +219,7 @@ def run_producer(setup = None, custom_crop = None, server = None):
 
             return NearestNDInterpolator(np.array(points), np.array(values))
 
-    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops.csv", wgs84, gk5)
+    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops_cleaned.csv", wgs84, gk5)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -392,6 +391,9 @@ def run_producer(setup = None, custom_crop = None, server = None):
                 for scol in xrange(0, vcols*resolution, resolution):
                     unique_jobs = defaultdict(lambda: 0)
 
+                    #if scol not in [366, 367, 368, 369, 370]:
+                    #    continue
+
                     #virtual col
                     vcol = scol // resolution
                     #print "scol:", scol, "vcol:", vcol
@@ -478,11 +480,14 @@ def run_producer(setup = None, custom_crop = None, server = None):
                             if setup["harvest-date"] == "fixed":
                                  harvest_date = seed_harvest_data["harvest-date"]                         
                             elif setup["harvest-date"] == "auto":
-                                harvest_date = seed_harvest_data["latest-harvest-date"]  
+                                harvest_date = seed_harvest_data["latest-harvest-date"]
 
                             hds = [int(x) for x in harvest_date.split("-")]
                             hd = date(2001, hds[1], hds[2])
                             hdoy = hd.timetuple().tm_yday
+
+                            esds = [int(x) for x in seed_harvest_data["earliest-sowing-date"].split("-")]
+                            esd = date(2001, esds[1], esds[2])
 
                             # sowing after harvest should probably never occur in both fixed setup!
                             if setup["sowing-date"] == "fixed" and setup["harvest-date"] == "fixed":
@@ -496,17 +501,18 @@ def run_producer(setup = None, custom_crop = None, server = None):
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
                             elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "fixed":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"]
+                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
                                 calc_sowing_date = date(2000, 12, 31) + timedelta(days=max(hdoy+1, sdoy))
                                 worksteps[0]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(sds[0], calc_sowing_date.month, calc_sowing_date.day)
                                 worksteps[1]["date"] = seed_harvest_data["harvest-date"]
 
                             elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"]
+                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
                                 calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
                                 worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
+                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
                         #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
 
                         #print "sowing:", worksteps[0], "harvest:", worksteps[1]

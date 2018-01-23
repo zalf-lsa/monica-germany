@@ -75,8 +75,8 @@ def prod_cons_calib(design_setup, custom_crop, server, calib_id="no_calibration"
     #clear directory first
     delete_files_in_dir(path_to_grids_output, "*.asc")
 
-    producer = Process(target=rwp.run_producer, args=(setup, custom_crop, server))
-    consumer = Process(target=rwc.run_consumer, args=(path_to_grids_output, True, server))
+    producer = Process(target=rwp.run_producer, args=(setup, custom_crop, server["producer"]))
+    consumer = Process(target=rwc.run_consumer, args=(path_to_grids_output, True, server["consumer"]))
     #producer = FuncThread(rwp.run_producer, setup, custom_crop)
     #consumer = FuncThread(rwc.run_consumer, path_to_grids_output, True)
     producer.daemon = True

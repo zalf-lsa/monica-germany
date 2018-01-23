@@ -51,7 +51,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     config = {
         #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
-        "path-to-grids-dir": "3/no_calibration/", #"out/",
+        "path-to-grids-dir": "2/no_calibration/", #"out/",
         
         "path-to-agg-grid": "N:/germany/landkreise_1000_gk3.asc",
         "path-to-agg2-grid": "N:/germany/bkr_1000_gk3.asc",
@@ -66,7 +66,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
         "grids-epsg": "31469", #gk5   #wgs84 = 4326
         "corine-epsg": "31469",
 
-        "pattern": "*_yield_*.asc",
+        "pattern": "*"#_yield_*.asc",
         #"pattern": "*nfert_avg.asc"
     }
     if len(sys.argv) > 1:
@@ -135,6 +135,9 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     for filename in os.listdir(path_to_grids_dir):
         if fnmatch.fnmatch(filename, config["pattern"]):
+            if os.path.isdir(path_to_grids_dir + filename):
+                continue
+
             print "averaging", path_to_grids_dir, filename
 
             try:

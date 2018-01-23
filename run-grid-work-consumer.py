@@ -102,6 +102,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 
     output_grids = {
         "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}#,
+#        "biom-final": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
 #        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
 #        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
@@ -110,9 +111,10 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         #"avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
 #        "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
 #        "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+#        "sowing-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
 #        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
 #        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
+#        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"}#,
 #        "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
@@ -207,16 +209,16 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         del row_col_data[row]
 
 
-def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = None):
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}):
     "collect data from workers"
 
     config = {
         "user": "berg-lc",
-        "port": "7777",
-        "no-data-port": "5555",
-        "server": server if server else "cluster3", 
-        "start-row": "0", #"860", #"0",
-        "end-row": "-1" #"861" #"-1"
+        "port": server["port"] if server["port"] else "7777",
+        "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
+        "server": server["server"] if server["server"] else "cluster3", 
+        "start-row": "0",
+        "end-row": "-1"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:

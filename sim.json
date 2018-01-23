@@ -40,7 +40,30 @@
 				["Crop", "FIRST"],
 				["CM-count", "FIRST"],
 				["Year", "LAST"],
-				["Yield|yield", "LAST"]
+				["Yield|yield", "LAST"],
+				["DOY|harvest-doy", "LAST"]
+			]
+		],
+
+		"debug events": [
+			"crop", [
+				["Crop", "FIRST"],
+				["CM-count", "FIRST"],
+				["Year", "LAST"],
+				["Yield|yield", "LAST"],
+				["LAI|crop-max-LAI", "MAX"],
+				["AbBiom|biom-final", "LAST"],
+				["DOY|sowing-doy", "FIRST"]
+			],
+
+			"maturity", [
+				"CM-count",
+				"DOY|maturity-doy"
+			],
+
+			"anthesis", [
+				"CM-count",
+				"DOY|anthesis-doy"
 			],
 
 			"Harvest", [

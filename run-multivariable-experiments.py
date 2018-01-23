@@ -44,7 +44,11 @@ from run_producer_consumer_aggregation import prod_cons_calib
 def main():
 
     config = {
-        "server": "cluster2"
+        "server": "cluster2",
+        "prod-port": "6666",
+        "cons-port": "7777",
+        "nd-port": "5555",
+        "run-ids": "all", #"[9, 10, 11, 12, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32]"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -61,24 +65,33 @@ def main():
         residue_params = json.load(_)
 
     #create crop object
+    #custom_crop = {
+    #    "is-winter-crop": True,
+    #    "cropParams": {
+    #        "species": species_params,
+    #        "cultivar": {
+    #            "=": cultivar_params,
+    #            "StageTemperatureSum": [
+    #                [
+    #                    150, 
+    #                    577, 
+    #                    531, 
+    #                    155, 
+    #                    135, 
+    #                    25
+    #                ], 
+    #                "°C d"
+    #            ]
+    #        }
+    #    },
+    #    "residueParams": residue_params
+    #}
+
     custom_crop = {
         "is-winter-crop": True,
         "cropParams": {
             "species": species_params,
-            "cultivar": {
-                "=": cultivar_params,
-                "StageTemperatureSum": [
-                    [
-                        150, 
-                        577, 
-                        531, 
-                        155, 
-                        135, 
-                        25
-                    ], 
-                    "°C d"
-                ]
-            }
+            "cultivar": cultivar_params
         },
         "residueParams": residue_params
     }
@@ -103,16 +116,31 @@ def main():
             return setups
 
     setups = read_design_csv("P:/monica-germany/design_nocalib.csv")
+    
+    server = {
+        "producer": {
+            "server": config["server"],
+            "port": config["prod-port"],
+            "nd-port": config["nd-port"]
+        },
+        "consumer": {
+            "server": config["server"],
+            "port": config["cons-port"],
+            "nd-port": config["nd-port"]
+        }
+    }
 
     best_calibs = {}
-    for run_id, setup in setups.iteritems():
-        #if run_id != 177:
+    run_ids_str = config["run-ids"]
+    for run_id in setups.keys() if run_ids_str == "all" else json.loads(run_ids_str):
+        setup = setups[run_id]
+        #if run_id not in [2]:#[9, 10, 11, 12, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32]:
         #    continue
         if setup.get("Calibration", False):
-            continue
-            best_calibs[run_id] = start_calibration(setup=setup, custom_crop=custom_crop, server=config["server"])
+            #continue
+            best_calibs[run_id] = start_calibration(setup=setup, custom_crop=custom_crop, server=server)
         else:
-            prod_cons_calib(design_setup=setup, custom_crop=custom_crop, server=config["server"])
+            prod_cons_calib(design_setup=setup, custom_crop=custom_crop, server=server)
 
     with open("best_calibrations.csv", "w") as _:
         json.dump(best_calibs, _, indent=4, sort_keys=True)
