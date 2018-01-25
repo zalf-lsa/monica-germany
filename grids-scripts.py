@@ -34,6 +34,10 @@ import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 from pyproj import Proj, transform
 
+import soil_io
+import monica_io
+import sqlite3
+
 def read_header(path_to_ascii_grid_file):
     "read metadata from esri ascii grid file"
     metadata = {}
@@ -218,7 +222,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     return year_to_agg_id_to_value
 
-if __name__ == "__main__":
+if __name__ == "#__main__":
     aggregate_by_grid()
 
 def create_lat_dem_per_lk_csv():
@@ -262,6 +266,12 @@ def create_lat_dem_per_lk_csv():
     dem_grid = np.loadtxt(path_to_dem_grid, skiprows=6)
     dem_gk5_grid_interpolate = create_integer_grid_interpolator(dem_grid, dem_meta)
 
+    path_to_soil_grid = "N:/germany/buek1000_1000_gk5.asc"
+    soil_meta, _ = read_header(path_to_soil_grid)
+    soil_grid = np.loadtxt(path_to_soil_grid, skiprows=6)
+    soil_gk5_grid_interpolate = create_integer_grid_interpolator(soil_grid, soil_meta)
+    soil_db_con = sqlite3.connect("N:/germany/buek1000.sqlite")
+
     wgs84 = Proj(init="epsg:4326")
     gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
@@ -270,6 +280,11 @@ def create_lat_dem_per_lk_csv():
     dem_sums = defaultdict(lambda: 0)
     counts = defaultdict(lambda: 0)
     lk_to_bkrs = defaultdict(set)
+    gw_sums = defaultdict(lambda: 0)
+    gw_counts = defaultdict(lambda: 0)
+
+    def get_value(list_or_value):
+        return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
 
     rows, cols = lk_grid.shape
     for row in xrange(rows):
@@ -296,6 +311,20 @@ def create_lat_dem_per_lk_csv():
             bkr_id = int(bkr_gk3_grid_interpolate(gk3_r, gk3_h))
             lk_to_bkrs[lk_id].add(bkr_id)
 
+            soil_id = soil_gk5_grid_interpolate(gk5_r, gk5_h)
+            sp_json = soil_io.soil_parameters(soil_db_con, soil_id)
+            soil_profile = monica_io.find_and_replace_references(sp_json, sp_json)["result"]
+            groundwaterlevel = 20
+            layer_depth = 0
+            for layer in soil_profile:
+                if layer.get("is_in_groundwater", False):
+                    groundwaterlevel = layer_depth
+                    #print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
+                    break
+                layer_depth += get_value(layer["Thickness"])
+            gw_sums[lk_id] += groundwaterlevel
+            gw_counts[lk_id] += 1
+
             counts[lk_id] += 1
 
         if row % 10 == 0:
@@ -304,15 +333,17 @@ def create_lat_dem_per_lk_csv():
 
     lat_results = {}
     dem_results = {}
+    gw_results = {}
     for lk_id in lat_sums.keys():
         lat_results[lk_id] = lat_sums.get(lk_id, 0) / counts[lk_id]
         dem_results[lk_id] = dem_sums.get(lk_id, 0) / counts[lk_id]
+        gw_results[lk_id] = gw_sums.get(lk_id, 0) / gw_counts[lk_id]
 
-    with open("avg_elevation_latitude_per_landkreis.csv", "wb") as _:
+    with open("avg_elevation_latitude_gw_per_landkreis.csv", "wb") as _:
         csv_writer = csv.writer(_)
-        csv_writer.writerow(["lk_id", "latitude", "elevation", "bkr_ids..."])
+        csv_writer.writerow(["lk_id", "latitude", "elevation", "groundwaterlevel", "bkr_ids..."])
         for lk_id in sorted(lat_results.keys()):
-            row = [lk_id, round(lat_results[lk_id], 1), round(dem_results[lk_id], 1)]
+            row = [lk_id, round(lat_results[lk_id], 1), round(dem_results[lk_id], 1), round(gw_results[lk_id], 1)]
             for bkr in sorted(lk_to_bkrs[lk_id]):
                 row.append(bkr)
             csv_writer.writerow(row)

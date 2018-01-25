@@ -154,7 +154,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "read seed/harvest dates"
 
         rename = {
-            "Winterweizen": [("WW", True)],
+            "WW": [("WW", True)],
             "Mais": [("SM", False), ("GM", False)],
             "Winterraps": [("WRa", True)],
             "Zucker-Ruebe": [("SBee", False)],
@@ -175,7 +175,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             data_at_cs = defaultdict()
             for row in reader:
                 
-                cs = int(row[1])
+                cs = int(row[0])
 
                 # if new climate station, store the data of the old climate station
                 if prev_cs is not None and cs != prev_cs:
@@ -186,40 +186,54 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                     points.append([r_gk5, h_gk5])
                     values.append(prev_cs)
 
-                crop_name = row[5]
+                crop_name = row[3]
                 crop_ids = rename[crop_name]
                 for crop_id, is_wintercrop in crop_ids:
                     try:
-                        sd, sm = map(int, row[6].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["sowing-date"] = "0000-{:02d}-{:02d}".format(sm, sd)
+                        base_date = date(2001, 1, 1)
 
-                        esd, esm = map(int, row[11].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esm, esd)
+                        sdoy = int(row[4])
+                        ilr_seed_harvest_data[cs][crop_id]["sowing-doy"] = sdoy
+                        sd = base_date + timedelta(days = sdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["sowing-date"] = "0000-{:02d}-{:02d}".format(sd.month, sd.day)
 
-                        lsd, lsm = map(int, row[12].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsm, lsd)
+                        esdoy = int(row[7])
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-doy"] = esdoy
+                        esd = base_date + timedelta(days = esdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esd.month, esd.day)
+
+                        lsdoy = int(row[8])
+                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-doy"] = lsdoy
+                        lsd = base_date + timedelta(days = lsdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsd.month, lsd.day)
 
                         digit = 1 if is_wintercrop else 0
 
-                        hd, hm = map(int, row[9].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hm, hd)
+                        hdoy = int(row[6])
+                        ilr_seed_harvest_data[cs][crop_id]["harvest-doy"] = hdoy
+                        hd = base_date + timedelta(days = hdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hd.month, hd.day)
 
-                        ehd, ehm = map(int, row[13].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehm, ehd)
+                        ehdoy = int(row[9])
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-doy"] = ehdoy
+                        ehd = base_date + timedelta(days = ehdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehd.month, ehd.day)
 
-                        lhd, lhm = map(int, row[14].split(".")[:2])
-                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhm, lhd)
+                        lhdoy = int(row[10])
+                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-doy"] = lhdoy
+                        lhd = base_date + timedelta(days = lhdoy - 1)
+                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhd.month, lhd.day)
                     except:
                         continue
 
-                lat = float(row[2])
-                lon = float(row[3])
+                lat = float(row[1])
+                lon = float(row[2])
                 prev_lat_lon = (lat, lon)      
                 prev_cs = cs
 
             return NearestNDInterpolator(np.array(points), np.array(values))
 
-    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_crops_cleaned.csv", wgs84, gk5)
+    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_HD_cleaned.csv", wgs84, gk5)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -288,23 +302,9 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
     climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
 
-
-    #crops_ids = [
-    #    "WW",
-        #"WB",
-        #"SB",
-        ##"RY",
-        #"GM",
-        #"SM",
-        #"PO",
-        #"SBee",
-        #"WRa"
-    #]
-
     sent_env_count = 1
     start_time = time.clock()
-
-    #c = 0
+    create_only_seed_harvest_doys_grids = False
 
     for setup_id in run_setups:
 
@@ -323,11 +323,14 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             scellsize = int(soil_meta["cellsize"])
             xllcorner = int(soil_meta["xllcorner"])
             yllcorner = int(soil_meta["yllcorner"])
-                        
+
             resolution = 1 #20
             vrows = srows // resolution
             vcols = scols // resolution
             lines = np.empty(resolution, dtype=object)
+
+            if create_only_seed_harvest_doys_grids:
+                sh_grids = [np.full((vrows,vcols), -9999, dtype=int) for _ in range(0, 6)]
 
             # send config information to consumer
             config_and_no_data_socket.send_json({
@@ -441,17 +444,19 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                     #continue
 
                     if full_no_data_block:
-                        config_and_no_data_socket.send_json({
-                            "type": "no-data",
-                            "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
-                        })
+                        if not create_only_seed_harvest_doys_grids:
+                            config_and_no_data_socket.send_json({
+                                "type": "no-data",
+                                "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
+                            })
                         continue
                     else:
-                        config_and_no_data_socket.send_json({
-                            "type": "jobs-per-cell",
-                            "count": len(unique_jobs),
-                            "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
-                        })
+                        if not create_only_seed_harvest_doys_grids:
+                            config_and_no_data_socket.send_json({
+                                "type": "jobs-per-cell",
+                                "count": len(unique_jobs),
+                                "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
+                            })
 
                     uj_id = 0
                     for (crow, ccol, soil_id, height_nn, slope, seed_harvest_cs), job in unique_jobs.iteritems():
@@ -511,6 +516,15 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                                 calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
                                 worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+
+                            if create_only_seed_harvest_doys_grids:
+                                sh_grids[0][vrow, vcol] = seed_harvest_data["earliest-sowing-doy"]
+                                sh_grids[1][vrow, vcol] = seed_harvest_data["sowing-doy"]
+                                sh_grids[2][vrow, vcol] = seed_harvest_data["latest-sowing-doy"]
+                                sh_grids[3][vrow, vcol] = seed_harvest_data["earliest-harvest-doy"]
+                                sh_grids[4][vrow, vcol] = seed_harvest_data["harvest-doy"]
+                                sh_grids[5][vrow, vcol] = seed_harvest_data["latest-harvest-doy"]
+                                continue
 
                         #print "dates: ", int(seed_harvest_cs), ":", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
                         #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
@@ -607,6 +621,20 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             #print "unknown_soil_ids:", unknown_soil_ids
 
             #print "crows/cols:", crows_cols
+
+            if create_only_seed_harvest_doys_grids:
+                header = "ncols\t\t" + str(vcols) + "\n" \
+                        "nrows\t\t" + str(vrows) + "\n" \
+                        "xllcorner\t" + str(xllcorner) + "\n" \
+                        "yllcorner\t" + str(yllcorner) + "\n" \
+                        "cellsize\t" + str(scellsize * resolution) + "\n" \
+                        "NODATA_value\t" + str(-9999)
+                np.savetxt("earliest-sowing-doy.asc", sh_grids[0], header=header, comments="", fmt="%5.0f")
+                np.savetxt("sowing-doy.asc", sh_grids[1], header=header, comments="", fmt="%5.0f")
+                np.savetxt("latest-sowing-doy.asc", sh_grids[2], header=header, comments="", fmt="%5.0f")
+                np.savetxt("earliest-harvest-doy.asc", sh_grids[3], header=header, comments="", fmt="%5.0f")
+                np.savetxt("harvest-doy.asc", sh_grids[4], header=header, comments="", fmt="%5.0f")
+                np.savetxt("latest-harvest-doy.asc", sh_grids[5], header=header, comments="", fmt="%5.0f")
 
     stop_time = time.clock()
 
