@@ -41,13 +41,14 @@ def start_calibration(setup, custom_crop, server):
     #sampler.sample(rep, ngs=len(params)+1, kstop=2*len(params)+1, peps=0.0001, pcento=0.00001)
     sampler.sample(rep, ngs=len(params)+1, kstop=2)
 
-    id_best = sampler.status.rep
+    id_best = sampler.status.bestrep
+    best_params = sampler.status.params
 
     print(str(id_best))
 
     print("finished!")
 
-    return id_best
+    return id_best, best_params
 
 
 #if __name__ == "__main__":

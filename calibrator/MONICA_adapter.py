@@ -113,17 +113,12 @@ class monica_adapter(object):
                 user_params[i]["derive_function"](vector, self.cultivar_params) if "derive_function" in user_params[i] else vector[i],
                 self.cultivar_params)
         
-        #customize custom crop
-        #self.custom_crop["cropParams"]["species"] = self.species_params
-        #self.custom_crop["cropParams"]["cultivar"] = self.cultivar_params
-        
-        #pass custom crop to monica producer/consumer
-        #TODO: to be implemented, it will return a dict [year][lk] = simulated yield
         
         sim_yield_DE = prod_cons_calib(self.setup, self.custom_crop, self.server, self.sim_id)
+        
         #####temporary way to populate sim_yield_DE (for testing)
-        #im_yield_DE = defaultdict(lambda: defaultdict(float))
-        #out_dir = "calculate-indices/out/"
+        #sim_yield_DE = defaultdict(lambda: defaultdict(float))
+        #out_dir = "calculate-indices/test_out/"
         #random_multiplier = random.uniform(0, 2)
         #for filename in os.listdir(out_dir):
         #    if "yield" not in filename:

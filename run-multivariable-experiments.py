@@ -65,29 +65,29 @@ def main():
         residue_params = json.load(_)
 
     #create crop object
-    #custom_crop = {
-    #    "is-winter-crop": True,
-    #    "cropParams": {
-    #        "species": species_params,
-    #        "cultivar": {
-    #            "=": cultivar_params,
-    #            "StageTemperatureSum": [
-    #                [
-    #                    150, 
-    #                    577, 
-    #                    531, 
-    #                    155, 
-    #                    135, 
-    #                    25
-    #                ], 
-    #                "°C d"
-    #            ]
-    #        }
-    #    },
-    #    "residueParams": residue_params
-    #}
+    calibrated_custom_crop = {
+        "is-winter-crop": True,
+        "cropParams": {
+            "species": species_params,
+            "cultivar": {
+                "=": cultivar_params,
+                "StageTemperatureSum": [
+                    [
+                        150, 
+                        584, 
+                        526, 
+                        168, 
+                        389, 
+                        25
+                    ], 
+                    "°C d"
+                ]
+            }
+        },
+        "residueParams": residue_params
+    }
 
-    custom_crop = {
+    default_custom_crop = {
         "is-winter-crop": True,
         "cropParams": {
             "species": species_params,
@@ -104,18 +104,16 @@ def main():
             for row in reader:
                 data = {}
                 for i, header_col in enumerate(header_cols):
-                    if i in [0, 1, 3]:
-                        continue
                     value = row[i]
                     if value in ["true", "false"]:
                         value = True if value == "true" else False
-                    if i == 2:
+                    if i == 0:
                         value = int(value)
                     data[header_col] = value    
                 setups[int(data["run.no"])] = data
             return setups
 
-    setups = read_design_csv("P:/monica-germany/design_nocalib.csv")
+    setups = read_design_csv("P:/monica-germany/design_complete_mb.csv")
     
     server = {
         "producer": {
@@ -130,20 +128,32 @@ def main():
         }
     }
 
-    best_calibs = {}
+    with open("best_calibrations.csv", "w") as _:
+        writer = csv.writer(_)
+        header = ["run_id", "best_cal_id", "params"]
+        writer.writerow(header)
+
     run_ids_str = config["run-ids"]
     for run_id in setups.keys() if run_ids_str == "all" else json.loads(run_ids_str):
         setup = setups[run_id]
         #if run_id not in [2]:#[9, 10, 11, 12, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32]:
         #    continue
-        if setup.get("Calibration", False):
-            #continue
-            best_calibs[run_id] = start_calibration(setup=setup, custom_crop=custom_crop, server=server)
-        else:
-            prod_cons_calib(design_setup=setup, custom_crop=custom_crop, server=server)
+        custom_crop = default_custom_crop if setup.get("Phenology", "default") == "default" else calibrated_custom_crop
 
-    with open("best_calibrations.csv", "w") as _:
-        json.dump(best_calibs, _, indent=4, sort_keys=True)
+        if setup.get("FCM_Calibration", False):
+            #continue
+            id_best, vals_params = start_calibration(setup=setup, custom_crop=custom_crop, server=server)
+            with open("best_calibrations.csv", "ab") as _:
+                writer = csv.writer(_)
+                row = []
+                row.append(str(run_id))
+                row.append(str(id_best))
+                row.append(str(vals_params))
+                writer.writerow(row)
+                
+        else:
+            #continue
+            prod_cons_calib(design_setup=setup, custom_crop=custom_crop, server=server)
 
 
 if __name__ == "__main__":

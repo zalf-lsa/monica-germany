@@ -18,20 +18,27 @@ plot(r, main="wheatwinterwheat_yield_1996_1")
 dev.off()
 
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
-files <- list.files(path=".", pattern=glob2rx("Tavg-*.asc"), full.names=F, recursive=FALSE)
-for(filename in files)
+for(i in 1:32)
 {
-  out_filename = str_replace(filename, "asc", "png")
-  print(out_filename)
-  png(out_filename, width=2000, height=2000, pointsize=30)
-  r <- raster(filename)
-  #plot(r, col=rev(terrain.colors(99)), breaks=seq(0, 1, length.out=100), legend=F)
-  #plot(r, col=rev(terrain.colors(5)), breaks=seq(0, 1, length.out=6), legend.only=T)
-  plot(r, main=out_filename)
-  #title(main=out_filename)
-  dev.off()
+  dir <- paste0("P:/monica-germany/calibration-sensitivity-runs/2018-01-30-full/", i, "/no_calibration/aggregated")
+  if(file.exists(dir))
+  {
+    setwd(dir)
+    files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
+    for(filename in files)
+    {
+      out_filename = str_replace(filename, "asc", "png")
+      print(out_filename)
+      png(out_filename, width=2000, height=2000, pointsize=30)
+      r <- raster(filename)
+      plot(r, col=rev(terrain.colors(200)), breaks=seq(0, 14000, length.out=200), legend=F)
+      plot(r, col=rev(terrain.colors(14)), breaks=seq(0, 14000, length.out=15), legend.only=T)
+      #plot(r, main=out_filename)
+      #title(main=out_filename)
+      dev.off()
+    }
+  }
 }
-
 
 setwd("P:/monica-germany/bkr-avgs/")
 setwd("P:/monica-germany/landkreise-avgs/")
