@@ -21,25 +21,36 @@ design <- FrF2(resolution = 4, randomize = FALSE, factor.names = list(
 summary(design)
 
 
-export.design(design, filename = "design_complete", type = "csv", OutDec = ".") 
+export.design(design, filename = "design_cfr", type = "csv", OutDec = ".") 
 
-res_r <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report_250118/shallow_groundwater/r.csv",header=F)
-res_rrmse <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report_250118/shallow_groundwater/RRMSE.csv",header=F)
-res_pbias <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report_250118/shallow_groundwater/pBIAS.csv",header=F)
-res_ai <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report_250118/shallow_groundwater/AI.csv",header=F)
+res_r <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report/r.csv",header=F)
+res_rrmse <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report/RRMSE.csv",header=F)
+res_pbias <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report/pBIAS.csv",header=F)
+res_ai <- read.csv("C:/Users/stella/Documents/GitHub/monica-germany/calculate-indices/report/AI.csv",header=F)
 
 resp_r <- add.response(design, res_r)
 resp_rrmse <- add.response(design, res_rrmse)
 resp_pbias <- add.response(design, res_pbias)
 resp_ai <- add.response(design, res_ai)
 
+plot(resp_r, cex = 1, cex.lab = 0.8, cex.axis = 0.8,
+     main = "Main effects plot r", cex.main = 2)
+
 plot(resp_rrmse, cex = 1, cex.lab = 0.8, cex.axis = 0.8,
      main = "Main effects plot rrmse", cex.main = 2)
+
+plot(resp_pbias, cex = 1, cex.lab = 0.8, cex.axis = 0.8,
+     main = "Main effects plot pbias", cex.main = 2)
+
+plot(resp_ai, cex = 1, cex.lab = 0.8, cex.axis = 0.8,
+     main = "Main effects plot ai", cex.main = 2)
+
+
 
 IAPlot(resp_rrmse, abbrev = 5, show.alias = TRUE, lwd = 2, cex = 2,
        cex.xax = 1.2, cex.lab = 1.5)
 
-DanielPlot(resp_rrmse, code = TRUE, half = TRUE, alpha = 0.1,
+DanielPlot(resp_ai, code = TRUE, half = TRUE, alpha = 0.1,
            cex.main = 1.8, cex.pch = 1.2, cex.lab = 1.4, cex.fac = 1.4,
            cex.axis = 1.2)
 

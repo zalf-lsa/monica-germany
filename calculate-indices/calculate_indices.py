@@ -7,7 +7,7 @@ import numpy as np
 config = {
     "elevation-filter": -9999,
     "gwaterlevel-filter": 9999,
-    "write_files_for_R": False,
+    "write_files_for_R": True,
     "disregard": {
         #solve problems with last sim year and winter crops (duplicated files, one filled of 0 values)
         "year": 2012,
@@ -18,6 +18,17 @@ config = {
 basepath = os.path.dirname(os.path.abspath(__file__))
 main_out_dir = "Z:/projects/monica-germany/calibration-sensitivity-runs/2018-01-30-full/"#basepath + "/out/"
 out_for_R_script = {}
+
+def read_best_cals():
+    with open(main_out_dir + "best_cals.csv") as _:
+        reader =  csv.reader(_)
+        reader.next()
+        best_cals = {}
+        for row in reader:
+            exp_id = row[0]
+            best_cal = row[1]
+            best_cals[exp_id] = best_cal
+        return best_cals
 
 def representsInt(s):
     try: 
@@ -37,7 +48,7 @@ def calculate_indices(obs, sim):
     out = defaultdict(float)
     out["RRMSE"] = spotpy.objectivefunctions.rrmse(obs, sim)
     out["pBIAS"] = spotpy.objectivefunctions.pbias(obs, sim)
-    out["NSE"] = spotpy.objectivefunctions.nashsutcliff(obs, sim)
+    out["NSE"] = spotpy.objectivefunctions.nashsutcliffe(obs, sim)
     out["AI"] = spotpy.objectivefunctions.agreementindex(obs, sim)
     out["r"] = spotpy.objectivefunctions.correlationcoefficient(obs, sim)
     out["r2"] = spotpy.objectivefunctions.rsquared(obs, sim)
@@ -73,10 +84,19 @@ def check_obs_sim_length(obs, sim, entity):
     if len(obs) != len(sim):
         print("!!obs and sim lists of " + entity + " have different length!!")
 
+best_cals = read_best_cals()
+skip_folders = ["avg-agg-maps", "avg-maps"]
+
 exp_dirs = [x[1] for x in os.walk(main_out_dir)][0]
 for exp_folder in exp_dirs:
+    if exp_folder in skip_folders:
+        continue
     calib_dirs = [x[1] for x in os.walk(main_out_dir + exp_folder + "/")][0]
     for calib_folder in calib_dirs:
+        #analyze only best calibs
+        if exp_folder in best_cals.keys():
+            if calib_folder != best_cals[exp_folder]:
+                continue
         out_dir = main_out_dir + exp_folder + "/" + calib_folder + "/"
         print("starting the analysis of " + out_dir)
 
@@ -160,10 +180,10 @@ for exp_folder in exp_dirs:
         #exp_files = [x[2] for x in os.walk(out_dir + "no_calibration/aggregated/")][0]
         exp_files = [x[2] for x in os.walk(out_dir + "aggregated/")][0]
         for filename in exp_files:
-            year = int(filename.split("_")[2])
-            cm_count = int(filename.split("_")[3])
             if ".csv" not in filename:
-                continue #skip grids
+                continue #skip grids and pictures
+            year = int(filename.split("_")[2])
+            cm_count = int(filename.split("_")[3])            
             if year == config["disregard"]["year"] and cm_count == config["disregard"]["cm_count"]:
                 continue #skip duplicated out files
             with open(out_dir + "aggregated/" + filename) as _:

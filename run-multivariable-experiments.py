@@ -113,7 +113,8 @@ def main():
                 setups[int(data["run.no"])] = data
             return setups
 
-    setups = read_design_csv("P:/monica-germany/design_complete_mb.csv")
+    setups = read_design_csv("Z:/projects/monica-germany/design_complete.csv")
+    #setups = read_design_csv("P:/monica-germany/design_complete.csv")
     
     server = {
         "producer": {
@@ -128,7 +129,7 @@ def main():
         }
     }
 
-    with open("best_calibrations.csv", "w") as _:
+    with open("best_calibrations.csv", "wb") as _:
         writer = csv.writer(_)
         header = ["run_id", "best_cal_id", "params"]
         writer.writerow(header)
@@ -148,7 +149,8 @@ def main():
                 row = []
                 row.append(str(run_id))
                 row.append(str(id_best))
-                row.append(str(vals_params))
+                for val in vals_params:
+                    row.append(str(val))
                 writer.writerow(row)
                 
         else:

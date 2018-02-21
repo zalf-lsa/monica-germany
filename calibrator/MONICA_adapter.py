@@ -25,6 +25,7 @@ class monica_adapter(object):
         self.species_params = self.custom_crop["cropParams"]["species"]
         self.cultivar_params = self.custom_crop["cropParams"]["cultivar"]
         self.server = server
+        self.trace_params = {}        
         
         #read observations
         sim_lk = set()
@@ -113,10 +114,18 @@ class monica_adapter(object):
                 user_params[i]["derive_function"](vector, self.cultivar_params) if "derive_function" in user_params[i] else vector[i],
                 self.cultivar_params)
         
-        
+
+        self.trace_params[self.sim_id] = vector
         sim_yield_DE = prod_cons_calib(self.setup, self.custom_crop, self.server, self.sim_id)
+
+        #print(self.sim_id, vector)
         
         #####temporary way to populate sim_yield_DE (for testing)
+        #sim_yield_DE = defaultdict(lambda: defaultdict(float))
+        #for lk in self.yield_data.keys():
+        #    for yr in self.yield_data[lk].keys():
+        #        sim_yield_DE[yr][lk] = self.yield_data[lk][yr]["obs"] * vector[0]
+        #print("exp " + str(self.sim_id) + " param " + str(vector[0]))
         #sim_yield_DE = defaultdict(lambda: defaultdict(float))
         #out_dir = "calculate-indices/test_out/"
         #random_multiplier = random.uniform(0, 2)
