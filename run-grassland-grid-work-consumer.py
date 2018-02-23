@@ -46,7 +46,7 @@ PATHS = {
         "local-path-to-output-dir": "out/"
     },
     "berg-xps15": {
-        "local-path-to-output-dir": "out/"
+        "local-path-to-output-dir": "grassland-out/"
     }
 }
 
@@ -54,7 +54,7 @@ PATHS = {
 def create_output(result):
     "create output structure for single run"
 
-    cm_count_to_vals = defaultdict(dict)
+    year_to_vals = defaultdict(dict)
     if len(result.get("data", [])) > 0 and len(result["data"][0].get("results", [])) > 0:
 
         for data in result.get("data", []):
@@ -81,8 +81,8 @@ def create_output(result):
                     else:
                         vals[name] = val
 
-                if "CM-count" not in vals:
-                    print("Missing CM-count in result section. Skipping results section.")
+                if "Year" not in vals:
+                    print("Missing Year in result section. Skipping results section.")
                     continue
 
                 if vals["cutting-doy"] < 270:
@@ -90,12 +90,12 @@ def create_output(result):
                 else:
                     vals["exportedCutBiomass-2nd-cut"] = vals.pop("exportedCutBiomass")
 
-                cm_count_to_vals[vals["CM-count"]].update(vals)
+                year_to_vals[vals["Year"]].update(vals)
 
-    return cm_count_to_vals
+    return year_to_vals
 
 
-def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
+def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, cut_usage):
     "write grids row by row"
 
     if not hasattr(write_row_to_grids, "nodata_row_count"):
@@ -128,8 +128,6 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 #        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
     }
 
-    cmc_to_crop = {}
-
     #is_no_data_row = True
     # skip this part if we write just a nodata line
     if row in row_col_data:
@@ -141,25 +139,22 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
                     no_data_cols += 1
                     continue
                 else:
-                    cmc_and_year_to_vals = defaultdict(lambda: defaultdict(list))
+                    year_to_vals = defaultdict(lambda: defaultdict(list))
                     for cell_data in rcd_val:
-                        for cm_count, data in cell_data.iteritems():
+                        for year, data in cell_data.iteritems():
                             for key, val in output_grids.iteritems():
-                                if cm_count not in cmc_to_crop:
-                                    cmc_to_crop[cm_count] = data["Crop"]
-
                                 if key in data:
-                                    cmc_and_year_to_vals[(cm_count, data["Year"])][key].append(data[key])
+                                    year_to_vals[year][key].append(data[key])
                                 else:
-                                    cmc_and_year_to_vals[(cm_count, data["Year"])][key] #just make sure at least an empty list is in there
+                                    year_to_vals[year][key] #just make sure at least an empty list is in there
 
-                    for (cm_count, year), key_to_vals in cmc_and_year_to_vals.iteritems():
+                    for year, key_to_vals in year_to_vals.iteritems():
                         for key, vals in key_to_vals.iteritems():
                             output_vals = output_grids[key]["data"]
                             if len(vals) > 0:
-                                output_vals[(cm_count, year)][col] = sum(vals) / len(vals)
+                                output_vals[year][col] = sum(vals) / len(vals)
                             else:
-                                output_vals[(cm_count, year)][col] = -9999
+                                output_vals[year][col] = -9999
                                 #no_data_cols += 1
 
         is_no_data_row = no_data_cols == ncols
@@ -181,11 +176,8 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         else:
             mold = lambda x: str(round(x, digits))
 
-        for (cm_count, year), row_arr in y2d.iteritems():
-
-            crop = cmc_to_crop[cm_count]    
-            crop = crop.replace("/", "").replace(" ", "")
-            path_to_file = path_to_output_dir + crop + "_" + key + "_" + str(year) + "_" + str(cm_count) + ".asc"
+        for year, row_arr in y2d.iteritems():
+            path_to_file = path_to_output_dir + cut_usage + "_" + key + "_" + str(year) + ".asc"
 
             if not os.path.isfile(path_to_file):
                 with open(path_to_file, "w") as _:
@@ -218,8 +210,8 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     "collect data from workers"
 
     config = {
-        "user": "kamali",
-        "port": server["port"] if server["port"] else "7777",
+        "user": "berg-xps15",
+        "port": server["port"] if server["port"] else "77774",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
         "server": server["server"] if server["server"] else "cluster3", 
         "start-row": "0",
@@ -310,16 +302,16 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
         elif not write_normal_output_files:
             custom_id = result["customId"]
-            resolution = custom_id["resolution"]
-            row, col = custom_id["vrow,vcol"]
-            crow,ccol = custom_id["ccol,crow"]
-            soil_id = custom_id["soil_id"]
-            cut_usage = custom_id["cut_usage"]
+            resolution = custom_id.get("resolution", 1)
+            row, col = custom_id.get("vrow,vcol", (-1, -1))
+            crow,ccol = custom_id.get("ccol,crow", (-1, -1))
+            soil_id = custom_id.get("soil_id", -1)
+            cut_usage = custom_id.get("cut_usage", "undef")
 
             data = cut_usage_to_data[cut_usage]
 
             if result.get("type", "") == "jobs-per-cell":
-                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + result.get("customId", "") \
+                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
@@ -327,7 +319,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["jobs-per-cell-count"][row][col] += 1 + result["count"]
                 #print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
             elif result.get("type", "") == "no-data":
-                debug_msg = "received no-data message customId: " + result.get("customId", "") \
+                debug_msg = "received no-data message customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
@@ -335,11 +327,11 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["row-col-data"][row][col] = -9999
                 data["jobs-per-cell-count"][row][col] = 0
             elif "data" in result:
-                debug_msg = "received work result " + str(received_env_count) + " customId: " + result.get("customId", "") \
+                debug_msg = "received work result " + str(received_env_count) + " customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
                 #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
-                #print debug_msg
+                print(debug_msg)
                 #debug_file.write(debug_msg + "\n")
                 data["row-col-data"][row][col].append(create_output(result))
                 data["jobs-per-cell-count"][row][col] -= 1
@@ -350,7 +342,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["datacell-count"][row] -= 1
 
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
-                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
+                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"], cut_usage)
                 debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
                 print(debug_msg)
                 #debug_file.write(debug_msg + "\n")
@@ -369,19 +361,17 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 print("ignoring", result.get("type", ""))
                 continue
 
-            print("received work result ", received_env_count, " customId: ", result.get("customId", ""))
+            print("received work result ", received_env_count, " customId: ", str(result.get("customId", "")))
 
             custom_id = result["customId"]
-            ci_parts = custom_id.split("|")
-            resolution = int(ci_parts[0])
-            row = int(ci_parts[1])
-            col = int(ci_parts[2])
-            crow = int(ci_parts[3])
-            ccol = int(ci_parts[4])
-            soil_id = int(ci_parts[5])
+            resolution = custom_id.get("resolution", 1)
+            row, col = custom_id.get("vrow,vcol", (-1, -1))
+            crow,ccol = custom_id.get("ccol,crow", (-1, -1))
+            soil_id = custom_id.get("soil_id", -1)
+            cut_usage = custom_id.get("cut_usage", "undef")
             
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out-normal/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
+            with open("out-normal/out-" + str(received_env_count) + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
                 for data_ in result.get("data", []):
