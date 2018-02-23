@@ -165,7 +165,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
         def to_date_str(doy, year=None):
             base_date = date(2001, 1, 1)
-            d = base_date + timedelta(days = sdoy - 1)
+            d = base_date + timedelta(days = doy - 1)
             return "{}-{:02d}-{:02d}".format(year if year else "0000", d.month, d.day)
 
         with open(path_to_csv_file) as _:
