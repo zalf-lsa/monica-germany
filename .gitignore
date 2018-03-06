@@ -10,6 +10,8 @@ indices-out
 calculate-indices/out/
 calculate-indices/report_allexps/
 calculate-indices/report/
+calculate-indices/report_best_exps/
+calculate-indices/report_WW/
 calculate-indices/report_indices.csv
 .vscode
 statistical-data-out
