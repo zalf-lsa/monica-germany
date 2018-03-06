@@ -44,7 +44,6 @@ LOCAL_RUN = False
 PATHS = {
     "berg-lc": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-soil-dir": "N:/soil/buek1000/brd/",
         "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
@@ -54,13 +53,22 @@ PATHS = {
     },
     "berg-xps15": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-soil-dir": "D:/soil/buek1000/brd/",
         "path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
         "path-to-projects-dir": "P:/",
         "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
+    },
+    "stella": {
+        "include-file-base-path": "C:/Users/stella/Documents/GitHub",
+        "path-to-climate-csvs-dir": "Z:/data/climate/dwd/csvs/germany/",
+        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        "path-to-data-dir": "Z:/data/",
+        "path-to-projects-dir": "Z:/projects/",
+        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/",
+
     }
 }
 
@@ -72,12 +80,16 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "berg-lc",
-        "port": server["port"] if server["port"] else "6666",
+        "user": "stella",# "berg-lc",
+        "port": server["port"] if server["port"] else "66663",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
-        "server": server["server"] if server["server"] else "cluster3",
+        "server": server["server"] if server["server"] else "cluster3", #localhost",
         "start-row": "0",
-        "end-row": "-1"
+        "end-row": "-1",
+        "setups-file": "sim_setups_ts.csv", #mb.csv",
+        "sim": "sim-voc.json",
+        "crop": "crop-voc.json",
+        "site": "site.json"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -96,15 +108,16 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     else:
         socket.connect("tcp://" + config["server"] + ":" + str(config["port"]))
 
-    with open("sim.json") as _:
+    with open(config["sim"]) as _:
         sim_json = json.load(_)
 
-    with open("site.json") as _:
+    sim_json["include-file-base-path"] = paths["include-file-base-path"]
+
+    with open(config["site"]) as _:
         site_json = json.load(_)
 
-    with open("crop.json") as _:
+    with open(config["crop"]) as _:
         crop_json = json.load(_)
-
 
     def read_sim_setups(path_to_setups_csv):
         with open(path_to_setups_csv) as setup_file:
@@ -127,8 +140,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         setups = {0: setup}
         run_setups = [0]
     else:
-        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
-        run_setups = [3]
+        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/" + config["setups-file"])
+        run_setups = [1]
 
 
     def read_header(path_to_ascii_grid_file):
@@ -149,16 +162,17 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
-    ilr_seed_harvest_data = defaultdict(lambda: defaultdict(dict))
-    def create_seed_harvest_gk5_interpolator(path_to_csv_file, wgs85, gk5):
+    ilr_seed_harvest_data = defaultdict(lambda: {"interpolate": None, "data": defaultdict(dict)})
+    def create_seed_harvest_gk5_interpolator_and_read_data(path_to_csv_file, wgs84, gk5):
         "read seed/harvest dates"
 
-        rename = {
-            "WW": [("WW", True)],
-            "Mais": [("SM", False), ("GM", False)],
-            "Winterraps": [("WRa", True)],
-            "Zucker-Ruebe": [("SBee", False)],
-            "Sommergerste": [("SB", False)]
+        wintercrop = {
+            "WW": True,
+            "SM": False,
+            "GM": False,
+            "WRa": True,
+            "SBee": False,
+            "SB": False
         }
 
         with open(path_to_csv_file) as _:
@@ -172,7 +186,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
             prev_cs = None
             prev_lat_lon = [None, None]
-            data_at_cs = defaultdict()
+            #data_at_cs = defaultdict()
             for row in reader:
                 
                 cs = int(row[0])
@@ -186,54 +200,56 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                     points.append([r_gk5, h_gk5])
                     values.append(prev_cs)
 
-                crop_name = row[3]
-                crop_ids = rename[crop_name]
-                for crop_id, is_wintercrop in crop_ids:
-                    try:
-                        base_date = date(2001, 1, 1)
+                crop_id = row[3]
+                is_wintercrop = wintercrop[crop_id]
 
-                        sdoy = int(row[4])
-                        ilr_seed_harvest_data[cs][crop_id]["sowing-doy"] = sdoy
-                        sd = base_date + timedelta(days = sdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["sowing-date"] = "0000-{:02d}-{:02d}".format(sd.month, sd.day)
+                base_date = date(2001, 1, 1)
 
-                        esdoy = int(row[7])
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-doy"] = esdoy
-                        esd = base_date + timedelta(days = esdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esd.month, esd.day)
+                sdoy = int(float(row[4]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["sowing-doy"] = sdoy
+                sd = base_date + timedelta(days = sdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["sowing-date"] = "0000-{:02d}-{:02d}".format(sd.month, sd.day)
 
-                        lsdoy = int(row[8])
-                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-doy"] = lsdoy
-                        lsd = base_date + timedelta(days = lsdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsd.month, lsd.day)
+                esdoy = int(float(row[7]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-sowing-doy"] = esdoy
+                esd = base_date + timedelta(days = esdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esd.month, esd.day)
 
-                        digit = 1 if is_wintercrop else 0
+                lsdoy = int(float(row[8]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["latest-sowing-doy"] = lsdoy
+                lsd = base_date + timedelta(days = lsdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsd.month, lsd.day)
 
-                        hdoy = int(row[6])
-                        ilr_seed_harvest_data[cs][crop_id]["harvest-doy"] = hdoy
-                        hd = base_date + timedelta(days = hdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hd.month, hd.day)
+                digit = 1 if is_wintercrop else 0
 
-                        ehdoy = int(row[9])
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-doy"] = ehdoy
-                        ehd = base_date + timedelta(days = ehdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehd.month, ehd.day)
+                hdoy = int(float(row[6]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["harvest-doy"] = hdoy
+                hd = base_date + timedelta(days = hdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hd.month, hd.day)
 
-                        lhdoy = int(row[10])
-                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-doy"] = lhdoy
-                        lhd = base_date + timedelta(days = lhdoy - 1)
-                        ilr_seed_harvest_data[cs][crop_id]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhd.month, lhd.day)
-                    except:
-                        continue
+                ehdoy = int(float(row[9]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-harvest-doy"] = ehdoy
+                ehd = base_date + timedelta(days = ehdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehd.month, ehd.day)
+
+                lhdoy = int(float(row[10]))
+                ilr_seed_harvest_data[crop_id]["data"][cs]["latest-harvest-doy"] = lhdoy
+                lhd = base_date + timedelta(days = lhdoy - 1)
+                ilr_seed_harvest_data[crop_id]["data"][cs]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhd.month, lhd.day)
 
                 lat = float(row[1])
                 lon = float(row[2])
                 prev_lat_lon = (lat, lon)      
                 prev_cs = cs
 
-            return NearestNDInterpolator(np.array(points), np.array(values))
+            ilr_seed_harvest_data[crop_id]["interpolate"] = NearestNDInterpolator(np.array(points), np.array(values))
 
-    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_HD_cleaned.csv", wgs84, gk5)
+    crops_in_setups = set()
+    for setup_id, setup in setups.iteritems():
+        crops_in_setups.add(setup["crop"])
+
+    for crop in crops_in_setups:
+        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop + ".csv", wgs84, gk5)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -429,7 +445,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
                             slope = slope_gk5_interpolate(sr_gk5, sh_gk5)
                             
-                            seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
+                            seed_harvest_cs = ilr_seed_harvest_data[crop_id]["interpolate"](sr_gk5, sh_gk5)
 
                             unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
 
@@ -471,7 +487,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
 
                         # set external seed/harvest dates
-                        seed_harvest_data = ilr_seed_harvest_data[seed_harvest_cs].get(crop_id, None)
+                        seed_harvest_data = ilr_seed_harvest_data[crop_id]["data"][seed_harvest_cs]
                         if seed_harvest_data:
                             if setup["sowing-date"] == "fixed":
                                 sowing_date = seed_harvest_data["sowing-date"]

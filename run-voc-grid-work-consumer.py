@@ -40,10 +40,16 @@ LOCAL_RUN = False
 
 PATHS = {
     "berg-lc": {
-        "local-path-to-output-dir": "out/"
+        "local-path-to-output-dir": "out/",
+        "local-path-to-csv-output-dir": "csv-out/"
     },
     "berg-xps15": {
-        "local-path-to-output-dir": "out/"
+        "local-path-to-output-dir": "out/",
+        "local-path-to-csv-output-dir": "csv-out/"
+    },
+    "stella": {
+        "local-path-to-output-dir": "out/",
+        "local-path-to-csv-output-dir": "csv-out/"
     }
 }
 
@@ -85,14 +91,128 @@ def create_output(result):
                 cm_count_to_vals[vals["CM-count"]].update(vals)
 
     for cmc in sorted(cm_count_to_vals.keys()):
-        if "harvest-doy" not in cm_count_to_vals[cmc]:
+        if cm_count_to_vals[cmc]["last-doy"] >= 365:
             del cm_count_to_vals[cmc] 
 
     return cm_count_to_vals
 
 
-def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
+def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, path_to_csv_output_dir):
     "write grids row by row"
+
+    is_data_row = len(filter(lambda x: x != -9999, row_col_data[row].values())) > 0
+    if row in row_col_data and is_data_row:
+        path_to_row_file = path_to_csv_output_dir + "row-" + str(row) + ".csv" 
+
+        if not os.path.isfile(path_to_row_file):
+            with open(path_to_row_file, "w") as _:
+                _.write("CM-count,row,col,Crop,Year,Globrad,Tmax,Tmin,Tavg,Precip,LAImax,AbBiom,G-iso,G-mono,\
+Globrad1,Tmax1,Tmin1,Tavg1,Precip1,LAI1,AbBiom1,G-iso1,G-mono1,\
+Globrad2,Tmax2,Tmin2,Tavg2,Precip2,LAI2,AbBiom2,G-iso2,G-mono2,\
+Globrad3,Tmax3,Tmin3,Tavg3,Precip3,LAI3,AbBiom3,G-iso3,G-mono3,\
+Globrad4,Tmax4,Tmin4,Tavg4,Precip4,LAI4,AbBiom4,G-iso4,G-mono4,\
+Globrad5,Tmax5,Tmin5,Tavg5,Precip5,LAI5,AbBiom5,G-iso5,G-mono5,\
+Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,\
+Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
+
+        with open(path_to_row_file, 'ab') as _:
+            writer = csv.writer(_, delimiter=",")
+
+            for col in xrange(0, ncols):
+                if col in row_col_data[row]:
+                    rcd_val = row_col_data[row][col]
+                    if rcd_val != -9999 and len(rcd_val) > 0:
+                        cell_data = rcd_val[0]
+
+                        for cm_count, data in cell_data.iteritems():
+                            row_ = [
+                                cm_count,
+                                row,
+                                col,
+                                data["Crop"],
+                                data["Year"],
+                                data["Globrad"],
+                                data["Tmax"],
+                                data["Tmin"],
+                                data["Tavg"],
+                                data["Precip"],
+                                data["LAImax"],
+                                data["AbBiom"],
+                                data["G-iso"],
+                                data["G-mono"],
+
+                                data.get("Globrad1", "NA"),
+                                data.get("Tmax1", "NA"),
+                                data.get("Tmin1", "NA"),
+                                data.get("Tavg1", "NA"),
+                                data.get("Precip1", "NA"),
+                                data.get("LAI1", "NA"),
+                                data.get("AbBiom1", "NA"),
+                                data.get("G-iso1", "NA"),
+                                data.get("G-mono1", "NA"),
+
+                                data.get("Globrad2", "NA"),
+                                data.get("Tmax2", "NA"),
+                                data.get("Tmin2", "NA"),
+                                data.get("Tavg2", "NA"),
+                                data.get("Precip2", "NA"),
+                                data.get("LAI2", "NA"),
+                                data.get("AbBiom2", "NA"),
+                                data.get("G-iso2", "NA"),
+                                data.get("G-mono2", "NA"),
+
+                                data.get("Globrad3", "NA"),
+                                data.get("Tmax3", "NA"),
+                                data.get("Tmin3", "NA"),
+                                data.get("Tavg3", "NA"),
+                                data.get("Precip3", "NA"),
+                                data.get("LAI3", "NA"),
+                                data.get("AbBiom3", "NA"),
+                                data.get("G-iso3", "NA"),
+                                data.get("G-mono3", "NA"),
+
+                                data.get("Globrad4", "NA"),
+                                data.get("Tmax4", "NA"),
+                                data.get("Tmin4", "NA"),
+                                data.get("Tavg4", "NA"),
+                                data.get("Precip4", "NA"),
+                                data.get("LAI4", "NA"),
+                                data.get("AbBiom4", "NA"),
+                                data.get("G-iso4", "NA"),
+                                data.get("G-mono4", "NA"),
+
+                                data.get("Globrad5", "NA"),
+                                data.get("Tmax5", "NA"),
+                                data.get("Tmin5", "NA"),
+                                data.get("Tavg5", "NA"),
+                                data.get("Precip5", "NA"),
+                                data.get("LAI5", "NA"),
+                                data.get("AbBiom5", "NA"),
+                                data.get("G-iso5", "NA"),
+                                data.get("G-mono5", "NA"),
+
+                                data.get("Globrad6", "NA"),
+                                data.get("Tmax6", "NA"),
+                                data.get("Tmin6", "NA"),
+                                data.get("Tavg6", "NA"),
+                                data.get("Precip6", "NA"),
+                                data.get("LAI6", "NA"),
+                                data.get("AbBiom6", "NA"),
+                                data.get("G-iso6", "NA"),
+                                data.get("G-mono6", "NA"),
+
+                                data.get("Globrad7", "NA"),
+                                data.get("Tmax7", "NA"),
+                                data.get("Tmin7", "NA"),
+                                data.get("Tavg7", "NA"),
+                                data.get("Precip7", "NA"),
+                                data.get("LAI7", "NA"),
+                                data.get("AbBiom7", "NA"),
+                                data.get("G-iso7", "NA"),
+                                data.get("G-mono7", "NA")
+                            ]
+                            writer.writerow(row_)
+
 
     if not hasattr(write_row_to_grids, "nodata_row_count"):
         write_row_to_grids.nodata_row_count = 0
@@ -101,26 +221,25 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
-        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}#,
-#        "biom-final": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-#        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-#        "crop-avg-transpiration-deficit": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        #"avg-30cm-sand": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        #"avg-30cm-clay": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-        #"avg-30cm-silt": {"data" : make_dict_nparr(), "cast-to": "int"},
-#        "maturity-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-#        "harvest-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-#        "sowing-doy": {"data" : make_dict_nparr(), "cast-to": "int"},
-#        "at-harvest-relative-total-development": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
-#        "doy90-to-harvest-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "anthesis-doy": {"data" : make_dict_nparr(), "cast-to": "int"}#,
-#        "yearly-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso1": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono1": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-iso7": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "G-mono7": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "LAImax": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Globrad": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
     }
 
     cmc_to_crop = {}
@@ -213,10 +332,10 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     "collect data from workers"
 
     config = {
-        "user": "berg-lc",
-        "port": server["port"] if server["port"] else "7777",
+        "user": "stella", # "berg-lc",
+        "port": server["port"] if server["port"] else "77773",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
-        "server": server["server"] if server["server"] else "localhost", 
+        "server": server["server"] if server["server"] else "cluster3", #"localhost", 
         "start-row": "0",
         "end-row": "-1"
     }
@@ -345,7 +464,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["datacell-count"][row] -= 1
 
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
-                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"])
+                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"], paths["local-path-to-csv-output-dir"])
                 debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
                 print debug_msg
                 #debug_file.write(debug_msg + "\n")
