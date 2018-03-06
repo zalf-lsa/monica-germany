@@ -44,7 +44,6 @@ LOCAL_RUN = False
 PATHS = {
     "kamali": {
         "include-file-base-path": "C:/Users/kamali/Documents/GitHub",
-        "path-to-soil-dir": "N:/soil/buek1000/brd/",
         "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
@@ -54,7 +53,6 @@ PATHS = {
     },
     "berg-lc": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-soil-dir": "N:/soil/buek1000/brd/",
         "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
         "path-to-data-dir": "N:/",
@@ -64,10 +62,9 @@ PATHS = {
     },
     "berg-xps15": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-soil-dir": "D:/soil/buek1000/brd/",
         "path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
         #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
-        "path-to-data-dir": "N:/",
+        "path-to-data-dir": "D:/",
         "path-to-projects-dir": "P:/",
         "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/"
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
@@ -82,8 +79,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "kamali",
-        "port": server["port"] if server["port"] else "6666",
+        "user": "berg-xps15",
+        "port": server["port"] if server["port"] else "66664",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
         "server": server["server"] if server["server"] else "cluster3",
         "start-row": "0",
@@ -137,8 +134,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         setups = {0: setup}
         run_setups = [0]
     else:
-        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_mb.csv")
-        run_setups = [3]
+        setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/sim_setups_bk.csv")
+        run_setups = [1]
 
 
     def read_header(path_to_ascii_grid_file):
@@ -159,23 +156,23 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
-    cs_to_grass_seed_harvest_data = defaultdict(dict)
+    cs_to_grass_sowing_cutting_data = defaultdict(lambda: defaultdict(dict))
     def create_seed_harvest_gk5_interpolator(path_to_csv_file, wgs85, gk5, sowing_year):
         "read seed/harvest dates"
 
         def to_date_str(doy, year=None):
             base_date = date(2001, 1, 1)
-            d = base_date + timedelta(days = sdoy - 1)
+            d = base_date + timedelta(days = doy - 1)
             return "{}-{:02d}-{:02d}".format(year if year else "0000", d.month, d.day)
 
         with open(path_to_csv_file) as _:
-            reader = csv.reader(_)
+            reader = csv.reader(_, delimiter=";")
 
             # skip header line
             reader.next()
 
-            points = []
-            values = []
+            points = defaultdict(list)
+            values = defaultdict(list)
 
             data = {}
             for row in reader:
@@ -183,25 +180,49 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 cs_id = int(row[0])
                 lat = float(row[1])
                 lon = float(row[2])
-
-                cs_to_grass_seed_harvest_data[cs_id] = {
-                    "cs_id": cs_id,
-                    "lat": lat,
-                    "lon": lon,
-                    "abs_sowing_date": to_date_str(int(row[4]), sowing_year),
-                    "rel_hew_1st_cutting_date": to_date_str(int(row[8])),
-                    "rel_silage_1st_cutting_date": to_date_str(int(row[12]))
-                }
-
                 r_gk5, h_gk5 = transform(wgs84, gk5, lon, lat)
-                    
-                points.append([r_gk5, h_gk5])
-                values.append(cs_id)
 
-            return NearestNDInterpolator(np.array(points), np.array(values))
+                #sowing
+                if row[4]: 
+                    cs_to_grass_sowing_cutting_data["sowing"][cs_id] = {
+                        "cs_id": cs_id,
+                        #"lat": lat,
+                        #"lon": lon,
+                        "abs_sowing_date": to_date_str(int(row[4]), sowing_year),
+                    }
+                    points["sowing"].append([r_gk5, h_gk5])
+                    values["sowing"].append(cs_id)
 
-    seed_harvest_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/sowing_harvest_GRASS_1995_2015.csv",
-                                                                        wgs84, gk5, 1995)
+                #hew
+                if row[8]: 
+                    cs_to_grass_sowing_cutting_data["hew"][cs_id] = {
+                        "cs_id": cs_id,
+                        #"lat": lat,
+                        #"lon": lon,
+                        "rel_1st_cutting_date": to_date_str(int(row[8])),
+                    }
+                    points["hew"].append([r_gk5, h_gk5])
+                    values["hew"].append(cs_id)
+
+                #silage
+                if row[12]:
+                    cs_to_grass_sowing_cutting_data["silage"][cs_id] = {
+                        "cs_id": cs_id,
+                        #"lat": lat,
+                        #"lon": lon,
+                        "rel_1st_cutting_date": to_date_str(int(row[12]))
+                    }
+                    points["silage"].append([r_gk5, h_gk5])
+                    values["silage"].append(cs_id)
+
+            return {
+                "sowing": NearestNDInterpolator(np.array(points["sowing"]), np.array(values["sowing"])),
+                "hew": NearestNDInterpolator(np.array(points["hew"]), np.array(values["hew"])),
+                "silage": NearestNDInterpolator(np.array(points["silage"]), np.array(values["silage"]))
+            }
+
+    sowing_cutting_gk5_interpolate = create_seed_harvest_gk5_interpolator(paths["path-to-projects-dir"] + "monica-germany/sowing_harvest_GRASS_1995_2015.csv",
+                                                                          wgs84, gk5, 1995)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -319,27 +340,27 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 "sim": sim_json,
                 "climate": ""
             })
-            crop_rotation_templates = env_template.pop("cropRotation")
-            env_template["cropRotation"] = []
+            #crop_rotation_templates = env_template.pop("cropRotation")
+            #env_template["cropRotation"] = []
 
             def get_value(list_or_value):
                 return list_or_value[0] if isinstance(list_or_value, list) else list_or_value
 
             #crows_cols = set()
 
-            crop_id = setup["crop"]
+            #crop_id = setup["crop"]
 
             # create crop rotation according to setup
             # get correct template
-            env_template["cropRotation"] = crop_rotation_templates[crop_id]
+            #env_template["cropRotation"] = crop_rotation_templates[crop_id]
 
             # we just got one cultivation method in our rotation
-            worksteps_templates_dict = env_template["cropRotation"][0].pop("worksteps")
+            #worksteps_templates_dict = env_template["cropRotation"][0].pop("worksteps")
 
             # clear the worksteps array and rebuild it out of the setup      
-            worksteps = env_template["cropRotation"][0]["worksteps"] = []
-            worksteps.append(worksteps_templates_dict["sowing"][setup["sowing-date"]])
-            worksteps.append(worksteps_templates_dict["harvest"][setup["harvest-date"]])
+            #worksteps = env_template["cropRotation"][0]["worksteps"] = []
+            #worksteps.append(worksteps_templates_dict["sowing"][setup["sowing-date"]])
+            #worksteps.append(worksteps_templates_dict["harvest"][setup["harvest-date"]])
 
             for srow in xrange(0, vrows*resolution, resolution):
 
@@ -397,9 +418,11 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
                             slope = slope_gk5_interpolate(sr_gk5, sh_gk5)
                             
-                            seed_harvest_cs = seed_harvest_gk5_interpolate(sr_gk5, sh_gk5)
+                            sowing_cs = sowing_cutting_gk5_interpolate["sowing"](sr_gk5, sh_gk5)
+                            hew_cs = sowing_cutting_gk5_interpolate["hew"](sr_gk5, sh_gk5)
+                            silage_cs = sowing_cutting_gk5_interpolate["silage"](sr_gk5, sh_gk5)
 
-                            unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
+                            unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), sowing_cs, hew_cs, silage_cs)] += 1
 
                             #print "scol:", scol, "vcol:", vcol, "crow/col:", (crow, ccol), "unique_jobs:", (crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)
 
@@ -415,7 +438,11 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                         if not create_only_seed_harvest_doys_grids:
                             config_and_no_data_socket.send_json({
                                 "type": "no-data",
-                                "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
+                                "customId": {"resolution": resolution, "vrow,vcol": (vrow, vcol), "cut_usage": "hew" }
+                            })
+                            config_and_no_data_socket.send_json({
+                                "type": "no-data",
+                                "customId": {"resolution": resolution, "vrow,vcol": (vrow, vcol), "cut_usage": "silage" }
                             })
                         continue
                     else:
@@ -423,11 +450,16 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             config_and_no_data_socket.send_json({
                                 "type": "jobs-per-cell",
                                 "count": len(unique_jobs),
-                                "customId": str(resolution) + "|" + str(vrow) + "|" + str(vcol) + "|-1|-1|-1"
+                                "customId": {"resolution": resolution, "vrow,vcol": (vrow, vcol), "cut_usage": "hew" }
+                            })
+                            config_and_no_data_socket.send_json({
+                                "type": "jobs-per-cell",
+                                "count": len(unique_jobs),
+                                "customId": {"resolution": resolution, "vrow,vcol": (vrow, vcol), "cut_usage": "silage" }
                             })
 
                     uj_id = 0
-                    for (crow, ccol, soil_id, height_nn, slope, seed_harvest_cs), job in unique_jobs.iteritems():
+                    for (crow, ccol, soil_id, height_nn, slope, sowing_cs, hew_cs, silage_cs), job in unique_jobs.iteritems():
 
                         uj_id += 1
 
@@ -437,74 +469,6 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
                         if custom_crop:
                             env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
-
-                        # set external seed/harvest dates
-                        seed_harvest_data = cs_to_grass_seed_harvest_data[seed_harvest_cs]
-                        env_template["cropRotation"][0]["worksteps"][0]["date"] = seed_harvest_data["abs_sowing_date"]
-                        env_template["cropRotation"][1]["worksteps"][0]["date"] = seed_harvest_data["abs_sowing_date"]
-                        env_template["cropRotation"][1]["worksteps"][0]["date"] = seed_harvest_data["abs_sowing_date"]
-                        worksteps[0]["date"] = seed_harvest_data["sowing-date"]
-                                worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
-
-
-                        if seed_harvest_data:
-                            if setup["sowing-date"] == "fixed":
-                                sowing_date = seed_harvest_data["sowing-date"]
-                            elif setup["sowing-date"] == "auto":
-                                sowing_date = seed_harvest_data["latest-sowing-date"]
-
-                            sds = [int(x) for x in sowing_date.split("-")]
-                            sd = date(2001, sds[1], sds[2])
-                            sdoy = sd.timetuple().tm_yday
-
-                            if setup["harvest-date"] == "fixed":
-                                 harvest_date = seed_harvest_data["harvest-date"]                         
-                            elif setup["harvest-date"] == "auto":
-                                harvest_date = seed_harvest_data["latest-harvest-date"]
-
-                            hds = [int(x) for x in harvest_date.split("-")]
-                            hd = date(2001, hds[1], hds[2])
-                            hdoy = hd.timetuple().tm_yday
-
-                            esds = [int(x) for x in seed_harvest_data["earliest-sowing-date"].split("-")]
-                            esd = date(2001, esds[1], esds[2])
-
-                            # sowing after harvest should probably never occur in both fixed setup!
-                            if setup["sowing-date"] == "fixed" and setup["harvest-date"] == "fixed":
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
-                                worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
-                            
-                            elif setup["sowing-date"] == "fixed" and setup["harvest-date"] == "auto":
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
-                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
-
-                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "fixed":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
-                                calc_sowing_date = date(2000, 12, 31) + timedelta(days=max(hdoy+1, sdoy))
-                                worksteps[0]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(sds[0], calc_sowing_date.month, calc_sowing_date.day)
-                                worksteps[1]["date"] = seed_harvest_data["harvest-date"]
-
-                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
-                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
-
-                            if create_only_seed_harvest_doys_grids:
-                                sh_grids[0][vrow, vcol] = seed_harvest_data["earliest-sowing-doy"]
-                                sh_grids[1][vrow, vcol] = seed_harvest_data["sowing-doy"]
-                                sh_grids[2][vrow, vcol] = seed_harvest_data["latest-sowing-doy"]
-                                sh_grids[3][vrow, vcol] = seed_harvest_data["earliest-harvest-doy"]
-                                sh_grids[4][vrow, vcol] = seed_harvest_data["harvest-doy"]
-                                sh_grids[5][vrow, vcol] = seed_harvest_data["latest-harvest-doy"]
-                                continue
-
-                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
-                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
-
-                        #print "sowing:", worksteps[0], "harvest:", worksteps[1]
                         
                         #with open("dump-" + str(c) + ".json", "w") as jdf:
                         #    json.dump({"id": (str(resolution) \
@@ -578,20 +542,29 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
                         #print env_template["pathToClimateCSV"]
 
-                        env_template["customId"] = str(resolution) \
-                        + "|" + str(vrow) + "|" + str(vcol) \
-                        + "|" + str(crow) + "|" + str(ccol) \
-                        + "|" + str(soil_id) \
-                        + "|" + crop_id \
-                        + "|" + str(uj_id)
+                        abs_sowing_date = cs_to_grass_sowing_cutting_data["sowing"][sowing_cs]["abs_sowing_date"]
+                        for cut_usage, sowing_cutting_cs in [("hew", hew_cs), ("silage", silage_cs)]:
+                            sowing_cutting_data = cs_to_grass_sowing_cutting_data[cut_usage][sowing_cutting_cs]
+                            # set external seed/harvest dates
+                            env_template["cropRotation"][0]["worksteps"][0]["date"] = abs_sowing_date
+                            env_template["cropRotation"][1]["worksteps"][0]["date"] = sowing_cutting_data["rel_1st_cutting_date"]
 
-                        #with open("envs/env-"+str(sent_env_count)+".json", "w") as _: 
-                        #    _.write(json.dumps(env))
+                            env_template["customId"] = {
+                                "resolution": resolution,
+                                "vrow,vcol": (vrow, vcol),
+                                "crow,ccol": (crow, ccol),
+                                "soil_id": soil_id,
+                                "unique_job_id": uj_id,
+                                "cut_usage": cut_usage
+                            } 
 
-                        socket.send_json(env_template)
-                        #print "sent env ", sent_env_count, " customId: ", env_template["customId"]
-                        #exit()
-                        sent_env_count += 1
+                            #with open("envs/env-"+str(sent_env_count)+".json", "w") as _: 
+                            #    _.write(json.dumps(env))
+
+                            socket.send_json(env_template)
+                            print("sent env ", sent_env_count, " customId: ", str(env_template["customId"]))
+                            #exit()
+                            sent_env_count += 1
 
             #print "unknown_soil_ids:", unknown_soil_ids
 
@@ -613,9 +586,9 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
     stop_time = time.clock()
 
-    print "sending ", (sent_env_count-1), " envs took ", (stop_time - start_time), " seconds"
+    print("sending ", (sent_env_count-1), " envs took ", (stop_time - start_time), " seconds")
     #print "ran from ", start, "/", row_cols[start], " to ", end, "/", row_cols[end]
-    print "exiting run_producer()"
+    print("exiting run_producer()")
 
 if __name__ == "__main__":
     run_producer()
