@@ -162,7 +162,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     #gk3 = Proj(init="epsg:3396")
     gk5 = Proj(init="epsg:31469")
 
-    ilr_seed_harvest_data = defaultdict(lambda: {"interpolate": None, "data": defaultdict(dict)})
+    ilr_seed_harvest_data = defaultdict(lambda: {"interpolate": None, "data": defaultdict(dict), "is-winter-crop": None})
     def create_seed_harvest_gk5_interpolator_and_read_data(path_to_csv_file, wgs84, gk5):
         "read seed/harvest dates"
 
@@ -202,6 +202,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
                 crop_id = row[3]
                 is_wintercrop = wintercrop[crop_id]
+                ilr_seed_harvest_data[crop_id]["is-winter-crop"] = is_wintercrop
 
                 base_date = date(2001, 1, 1)
 
@@ -210,12 +211,12 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 sd = base_date + timedelta(days = sdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["sowing-date"] = "0000-{:02d}-{:02d}".format(sd.month, sd.day)
 
-                esdoy = int(float(row[7]))
+                esdoy = int(float(row[8]))
                 ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-sowing-doy"] = esdoy
                 esd = base_date + timedelta(days = esdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-sowing-date"] = "0000-{:02d}-{:02d}".format(esd.month, esd.day)
 
-                lsdoy = int(float(row[8]))
+                lsdoy = int(float(row[9]))
                 ilr_seed_harvest_data[crop_id]["data"][cs]["latest-sowing-doy"] = lsdoy
                 lsd = base_date + timedelta(days = lsdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["latest-sowing-date"] = "0000-{:02d}-{:02d}".format(lsd.month, lsd.day)
@@ -227,12 +228,12 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 hd = base_date + timedelta(days = hdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, hd.month, hd.day)
 
-                ehdoy = int(float(row[9]))
+                ehdoy = int(float(row[10]))
                 ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-harvest-doy"] = ehdoy
                 ehd = base_date + timedelta(days = ehdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["earliest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, ehd.month, ehd.day)
 
-                lhdoy = int(float(row[10]))
+                lhdoy = int(float(row[11]))
                 ilr_seed_harvest_data[crop_id]["data"][cs]["latest-harvest-doy"] = lhdoy
                 lhd = base_date + timedelta(days = lhdoy - 1)
                 ilr_seed_harvest_data[crop_id]["data"][cs]["latest-harvest-date"] = "000{}-{:02d}-{:02d}".format(digit, lhd.month, lhd.day)
@@ -246,10 +247,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
     crops_in_setups = set()
     for setup_id, setup in setups.iteritems():
-        crops_in_setups.add(setup["crop"])
+        crops_in_setups.add(setup["crop-id"])
 
-    for crop in crops_in_setups:
-        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop + ".csv", wgs84, gk5)
+    for crop_id in crops_in_setups:
+        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv", wgs84, gk5)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -375,7 +376,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
             #crows_cols = set()
 
-            crop_id = setup["crop"]
+            crop_id = setup["crop-id"]
 
             # create crop rotation according to setup
             # get correct template
@@ -489,6 +490,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                         # set external seed/harvest dates
                         seed_harvest_data = ilr_seed_harvest_data[crop_id]["data"][seed_harvest_cs]
                         if seed_harvest_data:
+                            is_winter_crop = ilr_seed_harvest_data[crop_id]["is-winter-crop"]
+
                             if setup["sowing-date"] == "fixed":
                                 sowing_date = seed_harvest_data["sowing-date"]
                             elif setup["sowing-date"] == "auto":
@@ -517,7 +520,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                                 worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
                             
                             elif setup["sowing-date"] == "fixed" and setup["harvest-date"] == "auto":
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                if is_winter_crop:
+                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                else:
+                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
                                 worksteps[0]["date"] = seed_harvest_data["sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
@@ -529,7 +535,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
                             elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
                                 worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                if is_winter_crop:
+                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                else:
+                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
                                 worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
                                 worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 

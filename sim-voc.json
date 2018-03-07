@@ -33,7 +33,15 @@
 				["Clay|avg-30cm-clay", [1,3, "AVG"]],
 				["Silt|avg-30cm-silt", [1,3, "AVG"]]
 			]
+			,
+			"daily", [
+				"Crop",
+				"Stage"
+			]
+			
 		],
+
+		
 
 		"events": [
 			"crop", [

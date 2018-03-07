@@ -89,10 +89,10 @@ def create_output(result):
                     continue
 
                 cm_count_to_vals[vals["CM-count"]].update(vals)
-
+    
     for cmc in sorted(cm_count_to_vals.keys()):
         if cm_count_to_vals[cmc]["last-doy"] >= 365:
-            del cm_count_to_vals[cmc] 
+            del cm_count_to_vals[cmc]
 
     return cm_count_to_vals
 
