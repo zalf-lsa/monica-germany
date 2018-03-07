@@ -57,13 +57,25 @@
 						]
 					],
 					"DroughtStressThreshold": [
-						0.4,
-						0.4,
-						0.4,
-						0.4,
 						0.5,
 						0.5,
-						0.2
+						0.5,
+						0.5,
+						0.6,
+						0.6,
+						0.4
+					],
+					"StageTemperatureSum": [
+						[
+							68,
+							483,
+							140,
+							161,
+							153,
+							305,
+							25
+						],
+						"°C d"
 					]
 				}
 			},
@@ -79,7 +91,7 @@
 						"EF_MONOS": 0,
 						"EF_ISO": 3,
 						"VCMAX25": 100,
-						"FieldConditionModifier": 0.8
+						"__FieldConditionModifier": 0.8
 					},
 					"cultivar": {
 						"=": ["include-from-file", "monica-parameters/projects/fnr-voce/winter-rape_ts.json"],
@@ -120,6 +132,17 @@
 							0,
 							0
 						]
+					],
+					"StageTemperatureSum": [
+						[
+							175,
+							402,
+							129,
+							224,
+							706,
+							25
+						],
+						"°C d"
 					]
 				}
 			},
