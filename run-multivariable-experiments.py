@@ -57,15 +57,30 @@ def main():
                 config[k] = v
 
     #load default params
-    with open("calibrator/default-params/wheat.json") as _:
+    with open("calibrator/default-params/rye.json") as _:
         species_params = json.load(_)
-    with open("calibrator/default-params/winter-wheat.json") as _:
+    with open("calibrator/default-params/winter-rye.json") as _:
         cultivar_params = json.load(_)
-    with open("calibrator/default-params/wheat-residue.json") as _:
+    with open("calibrator/default-params/rye-residue.json") as _:
         residue_params = json.load(_)
+
+    official_yield_column = {
+        "winter-wheat": 3,
+        "rye": 4,
+        "winter-barley": 5,
+        "spring-barley": 6,
+        "oat": 7, 
+        "triticale": 8,
+        "potato": 9,
+        "sugar-beet": 10,
+        "winter-rapeseed": 11,
+        "silage-maize": 12
+    }
+    current_crop = "winter-rye"
 
     #create crop object
     calibrated_custom_crop = {
+        "official-yield-column": official_yield_column[current_crop],
         "is-winter-crop": True,
         "cropParams": {
             "species": species_params,
@@ -73,11 +88,11 @@ def main():
                 "=": cultivar_params,
                 "StageTemperatureSum": [
                     [
-                        150, 
-                        584, 
-                        526, 
-                        168, 
-                        389, 
+                        163, 
+                        262, 
+                        592, 
+                        241, 
+                        489, 
                         25
                     ], 
                     "°C d"
@@ -88,6 +103,7 @@ def main():
     }
 
     default_custom_crop = {
+        "official-yield-column": official_yield_column[current_crop],
         "is-winter-crop": True,
         "cropParams": {
             "species": species_params,
@@ -99,7 +115,7 @@ def main():
     def read_design_csv(path_to_design_csv):
         with open(path_to_design_csv) as design_file:
             setups = {}
-            reader = csv.reader(design_file)
+            reader = csv.reader(design_file, delimiter=";")
             header_cols = reader.next()
             for row in reader:
                 data = {}
@@ -113,8 +129,8 @@ def main():
                 setups[int(data["run.no"])] = data
             return setups
 
-    setups = read_design_csv("Z:/projects/monica-germany/design_complete.csv")
-    #setups = read_design_csv("P:/monica-germany/design_complete.csv")
+    #setups = read_design_csv("Z:/projects/monica-germany/design_complete.csv")
+    setups = read_design_csv("P:/monica-germany/design_best_runs_mb.csv")
     
     server = {
         "producer": {
