@@ -49,12 +49,13 @@ class monica_adapter(object):
                     lk = int(row[1])
                     if lk in sim_lk:
                         year = int(row[0])
-                        if representsfloat(row[3]):
-                            if float(row[3]) == 0.0:
+                        yield_col = self.custom_crop["official-yield-column"]
+                        if representsfloat(row[yield_col]):
+                            if float(row[yield_col]) == 0.0:
                                 #consider 0 as nodata
                                 continue
                             self.obs_lks.add(lk)
-                            obs_yield = float(row[3]) * 100 #kg ha-1
+                            obs_yield = float(row[yield_col]) * 100 #kg ha-1
                             self.yield_data[lk][year]["obs"] = obs_yield
         
         #populate observation list
