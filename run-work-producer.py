@@ -80,18 +80,19 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "stella",# "berg-lc",
-        "port": server["port"] if server["port"] else "66663",
+        "user": "berg-lc",
+        "port": server["port"] if server["port"] else "6666",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
-        "server": server["server"] if server["server"] else "cluster3", #localhost",
+        "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",
         "end-row": "-1",
         "setups-file": "sim_setups_ts.csv", #mb.csv",
-        "sim": "sim-voc.json",
-        "crop": "crop-voc.json",
+        "sim": "sim.json",
+        "crop": "crop.json",
         "site": "site.json"
     }
-    if len(sys.argv) > 1:
+    # read commandline args only if script is invoked directly from commandline
+    if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
             k, v = arg.split("=")
             if k in config:
@@ -168,15 +169,18 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
         wintercrop = {
             "WW": True,
-            "SM": False,
-            "GM": False,
+            "WR": True,
             "WRa": True,
+            "WB": True,
+            "MA": False,
             "SBee": False,
             "SB": False
         }
 
         with open(path_to_csv_file) as _:
             reader = csv.reader(_)
+
+            #print "reading:", path_to_csv_file
 
             # skip header line
             reader.next()
@@ -246,10 +250,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
     crops_in_setups = set()
     for setup_id, setup in setups.iteritems():
-        crops_in_setups.add(setup["crop"])
+        crops_in_setups.add(setup["crop-id"])
 
-    for crop in crops_in_setups:
-        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop + ".csv", wgs84, gk5)
+    for crop_id in crops_in_setups:
+        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv", wgs84, gk5)
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -375,7 +379,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
             #crows_cols = set()
 
-            crop_id = setup["crop"]
+            crop_id = setup["crop-id"]
 
             # create crop rotation according to setup
             # get correct template
