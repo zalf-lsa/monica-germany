@@ -172,7 +172,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             "WR": True,
             "WRa": True,
             "WB": True,
-            "MA": False,
+            "SM": False,
+            "GM": False,
             "SBee": False,
             "SB": False
         }

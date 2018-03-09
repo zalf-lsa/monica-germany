@@ -59,15 +59,16 @@ def main():
 
     crop_config = {
         "winter-wheat": (3, True, "WW", "wheat", "winter-wheat"),
-        "rye": (4, True, "WR", "rye", "winter-rye"),
+        "winter-rye": (4, True, "WR", "rye", "winter-rye"),
         "winter-barley": (5, True, "WB", "barley", "winter-barley"),
         "spring-barley": (6, False, "SB", "barley", "spring-barley"),
-        "oat": (7, False, "OA"),
-        "triticale": (8, False, "T"),
-        "potato": (9, False, "PO"),
-        "sugar-beet": (10, False, "SBee"),
+        "!!!!!!oat": (7, False, "OA"),
+        "!!!!!triticale": (8, False, "T"),
+        "!!!!!!potato": (9, False, "PO"),
+        "sugar-beet": (10, False, "SBee", "sugar-beet", "sugar-beet-cv"),
         "winter-rape": (11, True, "WRa", "rape", "winter-rape"),
-        "silage-maize": (12, False, "SM", "maize", "silage-maize")
+        "silage-maize": (12, False, "SM", "maize", "silage-maize"),
+        "!!!!!!!!grain-maize": (12, False, "GM", "maize", "grain-maize")
     }
 
     def read_design_csv(path_to_design_csv):
