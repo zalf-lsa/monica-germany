@@ -74,7 +74,8 @@ def main():
         "potato": 9,
         "sugar-beet": 10,
         "winter-rapeseed": 11,
-        "silage-maize": 12
+        "silage-maize": 12,
+        "grain-maize": 13
     }
     current_crop = "winter-rye"
 

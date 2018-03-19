@@ -16,7 +16,7 @@ config = {
 }
 
 basepath = os.path.dirname(os.path.abspath(__file__))
-main_out_dir = "Z:/projects/monica-germany/calibration-sensitivity-runs/2018-01-30-full/"#basepath + "/out/"
+main_out_dir = "Z:/projects/monica-germany/UBA-final-runs/ww/2018-02-26/"#basepath + "/out/"
 out_for_R_script = {}
 
 def read_best_cals():
@@ -137,7 +137,7 @@ for exp_folder in exp_dirs:
         #read official yields
         obs_lk = set()
         obs_bkr = set()
-        with open("official_yields_DE.csv") as _:
+        with open("official_yields_DE_extended.csv") as _:
             reader = csv.reader(_)
             for i in range(7):
                 next(reader, None)
@@ -152,6 +152,7 @@ for exp_folder in exp_dirs:
             #10= Zuckerruben (SBee)
             #11= Winterraps	(WRa)
             #12= Silomais (SM)
+            #13= Kornermais (GM)
 
             for row in reader:
                 if len(row)>2 and representsInt(row[1]):
