@@ -106,14 +106,12 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, pat
 
         if not os.path.isfile(path_to_row_file):
             with open(path_to_row_file, "w") as _:
-                _.write("CM-count,row,col,Crop,Year,Globrad,Tmax,Tmin,Tavg,Precip,LAImax,AbBiom,G-iso,G-mono,\
-Globrad1,Tmax1,Tmin1,Tavg1,Precip1,LAI1,AbBiom1,G-iso1,G-mono1,\
-Globrad2,Tmax2,Tmin2,Tavg2,Precip2,LAI2,AbBiom2,G-iso2,G-mono2,\
-Globrad3,Tmax3,Tmin3,Tavg3,Precip3,LAI3,AbBiom3,G-iso3,G-mono3,\
-Globrad4,Tmax4,Tmin4,Tavg4,Precip4,LAI4,AbBiom4,G-iso4,G-mono4,\
-Globrad5,Tmax5,Tmin5,Tavg5,Precip5,LAI5,AbBiom5,G-iso5,G-mono5,\
-Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,\
-Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
+                _.write("CM-count,row,col,Crop,Year,Globrad,Tmax,Tmin,Tavg,Precip,LAImax,AbBiom,G-iso,G-mono,cycle-length,\
+Globrad2,Tmax2,Tmin2,Tavg2,Precip2,LAI2,AbBiom2,G-iso2,G-mono2,length-S2,\
+Globrad3,Tmax3,Tmin3,Tavg3,Precip3,LAI3,AbBiom3,G-iso3,G-mono3,length-S3,\
+Globrad4,Tmax4,Tmin4,Tavg4,Precip4,LAI4,AbBiom4,G-iso4,G-mono4,length-S4,\
+Globrad5,Tmax5,Tmin5,Tavg5,Precip5,LAI5,AbBiom5,G-iso5,G-mono5,length-S5,\
+Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
 
         with open(path_to_row_file, 'ab') as _:
             writer = csv.writer(_, delimiter=",")
@@ -140,17 +138,8 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data["AbBiom"],
                                 data["G-iso"],
                                 data["G-mono"],
-
-                                data.get("Globrad1", "NA"),
-                                data.get("Tmax1", "NA"),
-                                data.get("Tmin1", "NA"),
-                                data.get("Tavg1", "NA"),
-                                data.get("Precip1", "NA"),
-                                data.get("LAI1", "NA"),
-                                data.get("AbBiom1", "NA"),
-                                data.get("G-iso1", "NA"),
-                                data.get("G-mono1", "NA"),
-
+                                data["cycle-length"],
+                                
                                 data.get("Globrad2", "NA"),
                                 data.get("Tmax2", "NA"),
                                 data.get("Tmin2", "NA"),
@@ -160,6 +149,7 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data.get("AbBiom2", "NA"),
                                 data.get("G-iso2", "NA"),
                                 data.get("G-mono2", "NA"),
+                                data.get("length-S2", "NA"),
 
                                 data.get("Globrad3", "NA"),
                                 data.get("Tmax3", "NA"),
@@ -170,6 +160,7 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data.get("AbBiom3", "NA"),
                                 data.get("G-iso3", "NA"),
                                 data.get("G-mono3", "NA"),
+                                data.get("length-S3", "NA"),
 
                                 data.get("Globrad4", "NA"),
                                 data.get("Tmax4", "NA"),
@@ -180,6 +171,7 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data.get("AbBiom4", "NA"),
                                 data.get("G-iso4", "NA"),
                                 data.get("G-mono4", "NA"),
+                                data.get("length-S4", "NA"),
 
                                 data.get("Globrad5", "NA"),
                                 data.get("Tmax5", "NA"),
@@ -190,6 +182,7 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data.get("AbBiom5", "NA"),
                                 data.get("G-iso5", "NA"),
                                 data.get("G-mono5", "NA"),
+                                data.get("length-S5", "NA"),
 
                                 data.get("Globrad6", "NA"),
                                 data.get("Tmax6", "NA"),
@@ -200,16 +193,7 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
                                 data.get("AbBiom6", "NA"),
                                 data.get("G-iso6", "NA"),
                                 data.get("G-mono6", "NA"),
-
-                                data.get("Globrad7", "NA"),
-                                data.get("Tmax7", "NA"),
-                                data.get("Tmin7", "NA"),
-                                data.get("Tavg7", "NA"),
-                                data.get("Precip7", "NA"),
-                                data.get("LAI7", "NA"),
-                                data.get("AbBiom7", "NA"),
-                                data.get("G-iso7", "NA"),
-                                data.get("G-mono7", "NA")
+                                data.get("length-S6", "NA")
                             ]
                             writer.writerow(row_)
 
@@ -223,23 +207,25 @@ Globrad7,Tmax7,Tmin7,Tavg7,Precip7,LAI7,AbBiom7,G-iso7,G-mono7\n")
     output_grids = {
         "G-iso": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-iso1": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono1": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-iso2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "length-S2": {"data" : make_dict_nparr(), "cast-to": "int"},
         "G-iso3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "length-S3": {"data" : make_dict_nparr(), "cast-to": "int"},
         "G-iso4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "length-S4": {"data" : make_dict_nparr(), "cast-to": "int"},
         "G-iso5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "length-S5": {"data" : make_dict_nparr(), "cast-to": "int"},
         "G-iso6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-iso7": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono7": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "length-S6": {"data" : make_dict_nparr(), "cast-to": "int"},
         "LAImax": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "Tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "Globrad": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "cycle-length": {"data" : make_dict_nparr(), "cast-to": "int"}
     }
 
     cmc_to_crop = {}

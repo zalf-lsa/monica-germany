@@ -57,7 +57,8 @@
 				["LAI|LAImax", "MAX"],
 				["AbBiom|AbBiom", "LAST"],
 				["guenther-isoprene-emission|G-iso", "SUM"],
-				["guenther-monoterpene-emission|G-mono", "SUM"]
+				["guenther-monoterpene-emission|G-mono", "SUM"],
+				["Count|cycle-length", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 1]},[
@@ -70,7 +71,8 @@
 				["LAI|LAI1", "AVG"],
 				["AbBiom|AbBiom1", "AVG"],
 				["guenther-isoprene-emission|G-iso1", "SUM"],
-				["guenther-monoterpene-emission|G-mono1", "SUM"]
+				["guenther-monoterpene-emission|G-mono1", "SUM"],
+				["Count|length-S1", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 2]},[
@@ -83,7 +85,8 @@
 				["LAI|LAI2", "AVG"],
 				["AbBiom|AbBiom2", "AVG"],
 				["guenther-isoprene-emission|G-iso2", "SUM"],
-				["guenther-monoterpene-emission|G-mono2", "SUM"]
+				["guenther-monoterpene-emission|G-mono2", "SUM"],
+				["Count|length-S2", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 3]},[
@@ -96,7 +99,8 @@
 				["LAI|LAI3", "AVG"],
 				["AbBiom|AbBiom3", "AVG"],
 				["guenther-isoprene-emission|G-iso3", "SUM"],
-				["guenther-monoterpene-emission|G-mono3", "SUM"]
+				["guenther-monoterpene-emission|G-mono3", "SUM"],
+				["Count|length-S3", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 4]},[
@@ -109,7 +113,8 @@
 				["LAI|LAI4", "AVG"],
 				["AbBiom|AbBiom4", "AVG"],
 				["guenther-isoprene-emission|G-iso4", "SUM"],
-				["guenther-monoterpene-emission|G-mono4", "SUM"]
+				["guenther-monoterpene-emission|G-mono4", "SUM"],
+				["Count|length-S4", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 5]},[
@@ -122,7 +127,8 @@
 				["LAI|LAI5", "AVG"],
 				["AbBiom|AbBiom5", "AVG"],
 				["guenther-isoprene-emission|G-iso5", "SUM"],
-				["guenther-monoterpene-emission|G-mono5", "SUM"]
+				["guenther-monoterpene-emission|G-mono5", "SUM"],
+				["Count|length-S5", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 6]},[
@@ -135,7 +141,8 @@
 				["LAI|LAI6", "AVG"],
 				["AbBiom|AbBiom6", "AVG"],
 				["guenther-isoprene-emission|G-iso6", "SUM"],
-				["guenther-monoterpene-emission|G-mono6", "SUM"]
+				["guenther-monoterpene-emission|G-mono6", "SUM"],
+				["Count|length-S6", "SUM"]
 			],
 
 			{"while": ["Stage", "=", 7]},[
@@ -148,7 +155,8 @@
 				["LAI|LAI7", "AVG"],
 				["AbBiom|AbBiom7", "AVG"],
 				["guenther-isoprene-emission|G-iso7", "SUM"],
-				["guenther-monoterpene-emission|G-mono7", "SUM"]
+				["guenther-monoterpene-emission|G-mono7", "SUM"],
+				["Count|length-S7", "SUM"]
 			]
 		],
 
