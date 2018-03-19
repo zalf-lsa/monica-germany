@@ -325,7 +325,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
         "start-row": "0",
         "end-row": "-1"
     }
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
             k,v = arg.split("=")
             if k in config:

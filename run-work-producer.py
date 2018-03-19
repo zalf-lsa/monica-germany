@@ -80,18 +80,19 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "stella",# "berg-lc",
-        "port": server["port"] if server["port"] else "66663",
+        "user": "berg-lc",
+        "port": server["port"] if server["port"] else "6666",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
-        "server": server["server"] if server["server"] else "cluster3", #localhost",
+        "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",
         "end-row": "-1",
         "setups-file": "sim_setups_ts.csv", #mb.csv",
-        "sim": "sim-voc.json",
-        "crop": "crop-voc.json",
+        "sim": "sim.json",
+        "crop": "crop.json",
         "site": "site.json"
     }
-    if len(sys.argv) > 1:
+    # read commandline args only if script is invoked directly from commandline
+    if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
             k, v = arg.split("=")
             if k in config:
@@ -168,15 +169,19 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
         wintercrop = {
             "WW": True,
+            "WR": True,
+            "WRa": True,
+            "WB": True,
             "SM": False,
             "GM": False,
-            "WRa": True,
             "SBee": False,
             "SB": False
         }
 
         with open(path_to_csv_file) as _:
             reader = csv.reader(_)
+
+            #print "reading:", path_to_csv_file
 
             # skip header line
             reader.next()

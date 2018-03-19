@@ -44,11 +44,12 @@ from run_producer_consumer_aggregation import prod_cons_calib
 def main():
 
     config = {
-        "server": "cluster2",
+        "server": "localhost",
         "prod-port": "6666",
         "cons-port": "7777",
         "nd-port": "5555",
         "run-ids": "all", #"[9, 10, 11, 12, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32]"
+        "crop": "winter-rape"
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -56,61 +57,18 @@ def main():
             if k in config:
                 config[k] = v
 
-    #load default params
-    with open("calibrator/default-params/rye.json") as _:
-        species_params = json.load(_)
-    with open("calibrator/default-params/winter-rye.json") as _:
-        cultivar_params = json.load(_)
-    with open("calibrator/default-params/rye-residue.json") as _:
-        residue_params = json.load(_)
-
-    official_yield_column = {
-        "winter-wheat": 3,
-        "rye": 4,
-        "winter-barley": 5,
-        "spring-barley": 6,
-        "oat": 7, 
-        "triticale": 8,
-        "potato": 9,
-        "sugar-beet": 10,
-        "winter-rapeseed": 11,
-        "silage-maize": 12,
-        "grain-maize": 13
-    }
-    current_crop = "winter-rye"
-
-    #create crop object
-    calibrated_custom_crop = {
-        "official-yield-column": official_yield_column[current_crop],
-        "is-winter-crop": True,
-        "cropParams": {
-            "species": species_params,
-            "cultivar": {
-                "=": cultivar_params,
-                "StageTemperatureSum": [
-                    [
-                        163, 
-                        262, 
-                        592, 
-                        241, 
-                        489, 
-                        25
-                    ], 
-                    "°C d"
-                ]
-            }
-        },
-        "residueParams": residue_params
-    }
-
-    default_custom_crop = {
-        "official-yield-column": official_yield_column[current_crop],
-        "is-winter-crop": True,
-        "cropParams": {
-            "species": species_params,
-            "cultivar": cultivar_params
-        },
-        "residueParams": residue_params
+    crop_config = {
+        "winter-wheat": (3, True, "WW", "wheat", "winter-wheat"),
+        "winter-rye": (4, True, "WR", "rye", "winter-rye"),
+        "winter-barley": (5, True, "WB", "barley", "winter-barley"),
+        "spring-barley": (6, False, "SB", "barley", "spring-barley"),
+        "!!!!!!oat": (7, False, "OA"),
+        "!!!!!triticale": (8, False, "T"),
+        "!!!!!!potato": (9, False, "PO"),
+        "sugar-beet": (10, False, "SBee", "sugar-beet", "sugar-beet-cv"),
+        "winter-rape": (11, True, "WRa", "rape", "winter-rape"),
+        "silage-maize": (12, False, "SM", "maize", "silage-maize"),
+        "grain-maize": (13, False, "GM", "maize", "grain-maize")
     }
 
     def read_design_csv(path_to_design_csv):
@@ -130,8 +88,60 @@ def main():
                 setups[int(data["run.no"])] = data
             return setups
 
+    official_yield_column, is_winter_crop, crop_id, species, cultivar = crop_config[config["crop"]]
+
     #setups = read_design_csv("Z:/projects/monica-germany/design_complete.csv")
     setups = read_design_csv("P:/monica-germany/design_best_runs_mb.csv")
+    for setup_id, setup in setups.iteritems():
+        setup["crop-id"] = crop_id
+
+    #load default params
+    with open("calibrator/default-params/" + species + ".json") as _:
+        species_params = json.load(_)
+    with open("calibrator/default-params/" + cultivar + ".json") as _:
+        cultivar_params = json.load(_)
+    with open("calibrator/default-params/" + species + "-residue.json") as _:
+        residue_params = json.load(_)
+
+    # read optimized temp sums
+    stageTempSums = []
+    with open("calibrator/default-params/optimizedparams_" + crop_id + ".csv") as _:
+        for line in _:
+            stageTempSums.append(float(line.split(",")[1]))
+
+    #create crop object
+    calibrated_custom_crop = {
+        "official-yield-column": official_yield_column,
+        "is-winter-crop": is_winter_crop,
+        "cropParams": {
+            "species": species_params,
+            "cultivar": {
+                "=": cultivar_params,
+                "StageTemperatureSum": [
+                    [
+                        stageTempSums[0], 
+                        stageTempSums[1], 
+                        stageTempSums[2], 
+                        stageTempSums[3], 
+                        stageTempSums[4], 
+                        25
+                    ], 
+                    "°C d"
+                ]
+            }
+        },
+        "residueParams": residue_params
+    }
+
+    default_custom_crop = {
+        "official-yield-column": official_yield_column,
+        "is-winter-crop": is_winter_crop,
+        "cropParams": {
+            "species": species_params,
+            "cultivar": cultivar_params
+        },
+        "residueParams": residue_params
+    }
     
     server = {
         "producer": {

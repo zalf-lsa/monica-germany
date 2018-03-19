@@ -52,7 +52,7 @@ def prod_cons_calib(design_setup, custom_crop, server, calib_id="no_calibration"
 
     setup = {
         "run-id": design_setup["run.no"],
-        "crop": "WW",
+        "crop-id": design_setup["crop-id"],
         "groundwater-level": design_setup["GroundWaterLevel"],
         "impenetrable-layer": design_setup["ImpenetrableLayer"],
         "elevation": True,

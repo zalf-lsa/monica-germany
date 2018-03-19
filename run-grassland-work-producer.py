@@ -86,7 +86,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "start-row": "0",
         "end-row": "-1"
     }
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
             k, v = arg.split("=")
             if k in config:
