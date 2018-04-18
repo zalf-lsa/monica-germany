@@ -29,7 +29,8 @@ def main():
 
     config = {
         "port": "7777",
-        "server": "cluster2"
+        "server": "cluster2",
+        "shared_id": None
     }
     if len(sys.argv) > 1:
         for arg in sys.argv[1:]:
@@ -38,11 +39,16 @@ def main():
                 config[k] = v 
 
     context = zmq.Context()
-    socket = context.socket(zmq.PULL)
+    socket = context.socket(zmq.DEALER)#PULL)
+    if config["shared_id"]:
+        socket.setsockopt(zmq.IDENTITY, config["shared_id"])
+
     if LOCAL_RUN:
         socket.connect("tcp://localhost:" + config["port"])
     else:
         socket.connect("tcp://" + config["server"] + ":" + config["port"])
+
+    
 
     i = 0
     while True:
