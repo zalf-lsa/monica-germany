@@ -28,7 +28,7 @@ from collections import defaultdict
 #import types
 import sys
 import fnmatch
-#print sys.path
+#print(sys.path)
 
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
@@ -142,7 +142,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
             if os.path.isdir(path_to_grids_dir + filename):
                 continue
 
-            print "averaging", path_to_grids_dir, filename
+            print("averaging", path_to_grids_dir, filename)
 
             try:
                 year = int(filename.split("_")[2])
@@ -164,7 +164,7 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
             agg_to_agg2 = defaultdict(set)
 
-            #print rows,
+            #print(rows,)
             for row in range(rows):
                 for col in range(cols):
 
@@ -194,8 +194,8 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
                     counts[agg_id] += 1
                 
                 #if row % 10 == 0:
-                #    print row,
-            #print ""
+                #    print(row,)
+            #print("")
 
             results = {}
             for id, sum_ in sums.iteritems():
@@ -221,7 +221,6 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
             year_to_agg_id_to_value[year] = results
 
     return year_to_agg_id_to_value
-
 if __name__ == "#__main__":
     aggregate_by_grid()
 
@@ -319,7 +318,7 @@ def create_lat_dem_per_lk_csv():
             for layer in soil_profile:
                 if layer.get("is_in_groundwater", False):
                     groundwaterlevel = layer_depth
-                    #print "setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m"
+                    #print("setting groundwaterlevel of soil_id:", str(soil_id), "to", groundwaterlevel, "m")
                     break
                 layer_depth += get_value(layer["Thickness"])
             gw_sums[lk_id] += groundwaterlevel
@@ -328,7 +327,7 @@ def create_lat_dem_per_lk_csv():
             counts[lk_id] += 1
 
         if row % 10 == 0:
-            print row,
+            print(row,)
 
 
     lat_results = {}
@@ -377,15 +376,15 @@ def write_csv_data_into_landkreis_grid():
 
         for output, out_data in data.iteritems():
 
-            print "creating", id, output
+            print("creating", id, output)
             grid = np.empty(lk_grid.shape, dtype=float)
             np.copyto(grid, lk_grid)
             rows, cols = grid.shape
-            print rows, "rows"
+            print(rows, "rows")
             
             for row in xrange(rows):
                 if row % 10 == 0:
-                    print row,
+                    print(row,)
 
                 for col in xrange(cols):
                     value = grid[row, col]
@@ -400,7 +399,7 @@ def write_csv_data_into_landkreis_grid():
                 pass
             outfile = full_out_dir + output + ".asc"
             np.savetxt(outfile, grid, header=lk_header.strip(), delimiter=" ", comments="", fmt="%.5f") 
-            print "wrote", outfile
+            print("wrote", outfile)
 if __name__ == "#__main__":
     write_csv_data_into_landkreis_grid()
 
@@ -415,21 +414,21 @@ def write_grid():
                 if id != -9999:
                     ids.add(id)
             if count % 100 == 0:
-                print count,
+                print(count,)
 
-        print "\n", ids
+        print("\n", ids)
 
         #for line_no in range(6 + 11194 + 1):
         #    if line_no == 6 + 11194:
         #        line = _.readline()
         #        cols = line.split()
         #        soil_id = cols[3697]
-        #        print soil_id
+        #        print(soil_id)
         #        exit()
         #    else: 
         #        _.readline()
 
-    print ""
+    print("")
 if __name__ == "#__main__":
     write_grid()
 
@@ -488,7 +487,6 @@ if __name__ == "#__main__":
 def create_avg_grid(path_to_dir):
 
     acc_arrs = defaultdict(lambda: {"arr": None, "count": 0, "filename": "", "header": ""})
-    arr_counts = {}
 
     for filename in sorted(os.listdir(path_to_dir)):
         if filename[-3:] == "asc":
@@ -504,12 +502,24 @@ def create_avg_grid(path_to_dir):
 
             acc_arrs[id]["arr"] += arr
             acc_arrs[id]["count"] += 1
-            print "added:", filename
-
+            print("added:", filename)
 
     for id, acc_arr in acc_arrs.iteritems():
         acc_arr["arr"] /= acc_arr["count"]
         np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
-        print "wrote:", acc_arr["filename"]
-if __name__ == "#__main__": 
-    create_avg_grid("out/")
+        print("wrote:", acc_arr["filename"])
+if __name__ == "__main__": 
+    #create_avg_grid("P:/monica-germany/UBA-final-runs/grassland/grassland-out/")
+
+    for (run_id, calib_run_id) in [(1,8)]:
+        #dir1 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/"
+        #dir2 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/aggregated/"
+        #dir1 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/"
+        #dir2 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/aggregated/"
+        dir1 = "P:/monica-germany/UBA-final-runs/grassland/2018-03-23/revised-outputs/"
+   
+        if os.path.exists(dir1):
+            create_avg_grid(dir1)
+            #create_avg_grid(dir2)
+
+
