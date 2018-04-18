@@ -38,7 +38,7 @@ class monica_adapter(object):
         #data[bkr/lk][year][sim/obs]
         self.yield_data = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
         self.obs_lks = set()
-        with open("calculate-indices/official_yields_DE_extended.csv") as _:
+        with open("calculate-indices/official_yields_DE_extended_DM.csv") as _:
             reader = csv.reader(_)
             for i in range(7):
                 next(reader, None)
