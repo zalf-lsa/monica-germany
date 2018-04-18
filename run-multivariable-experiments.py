@@ -64,7 +64,7 @@ def main():
         "spring-barley": (6, False, "SB", "barley", "spring-barley"),
         "!!!!!!oat": (7, False, "OA"),
         "!!!!!triticale": (8, False, "T"),
-        "!!!!!!potato": (9, False, "PO"),
+        "potato": (9, False, "PO", "potato", "moderately-early-potato"),
         "sugar-beet": (10, False, "SBee", "sugar-beet", "sugar-beet-cv"),
         "winter-rape": (11, True, "WRa", "rape", "winter-rape"),
         "silage-maize": (12, False, "SM", "maize", "silage-maize"),
