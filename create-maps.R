@@ -18,27 +18,70 @@ plot(r, main="wheatwinterwheat_yield_1996_1")
 dev.off()
 
 setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
-for(i in 1:32)
+#for(i in 1:32)
+#for(i in list(c(1,9)))
+for(dir in list(paste0("P:/monica-germany/UBA-final-runs/grassland/2018-03-23/revised-outputs")))
+#for(dir in list(paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-27/best"),
+#                paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-27/best/", "/aggregated")))
+#for(dir in list(paste0("P:/monica-germany/UBA-final-runs/potato/2018-03-28/best"),
+#                paste0("P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/", "/aggregated")))
 {
-  dir <- paste0("P:/monica-germany/calibration-sensitivity-runs/2018-01-30-full/", i, "/no_calibration/aggregated")
+  #dir <- paste0("N:/germany")
+  #dir <- paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-09/best")
+  #dir <- paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-09/best/", "/aggregated")
+  #dir <- paste0("P:/monica-germany/UBA-final-runs/winter-barley/2018-03-07/", i[[2]], "_best/")
+  #dir <- paste0("P:/monica-germany/UBA-final-runs/winter-barley/2018-03-07/", i[[2]], "_best/", "/aggregated")
+  #dir <- paste0("C:/Users/berg.ZALF-AD/GitHub/monica-germany/", i, "/no_calibration")
   if(file.exists(dir))
   {
     setwd(dir)
-    files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
+    files <- list.files(path=".", pattern=glob2rx("*exported*.asc"), full.names=F, recursive=FALSE)
+    #print(files)
     for(filename in files)
     {
       out_filename = str_replace(filename, "asc", "png")
       print(out_filename)
       png(out_filename, width=2000, height=2000, pointsize=30)
       r <- raster(filename)
-      plot(r, col=rev(terrain.colors(200)), breaks=seq(0, 14000, length.out=200), legend=F)
+      plot(r, col=rev(terrain.colors(2000)), breaks=seq(0, 14000, length.out=2000), legend=F)
       plot(r, col=rev(terrain.colors(14)), breaks=seq(0, 14000, length.out=15), legend.only=T)
-      #plot(r, main=out_filename)
-      #title(main=out_filename)
+      title(main=paste0("grassland exported cut biomass  ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
+      #plot(r, main=paste0("grassland N leach ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
+      #plot(r, main=paste0("grassland exported cut biomass ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
       dev.off()
     }
   }
 }
+
+#dir <- paste0("P:/carbiocial/out_grids/historical/results")
+dir <- paste0("P:/carbiocial/out_grids/future_starr/results")
+#dir <- paste0("P:/carbiocial/out_grids/future_wrf/results")
+if(file.exists(dir))
+{
+  setwd(dir)
+  files <- list.files(path=".", pattern=glob2rx("mmaizegrainmaize*.asc"), full.names=F, recursive=FALSE)
+  #print(files)
+  for(filename in files)
+  {
+    out_filename = str_replace(filename, "asc", "png")
+    print(out_filename)
+    png(out_filename, width=2000, height=2000, pointsize=30)
+    r <- raster(filename)
+    name_parts <- strsplit(out_filename, "_|\\.")[[1]]
+    in_crop <- name_parts[[1]]
+    first_crop <- paste0("soybean ", name_parts[[4]])
+    second_crop <- name_parts[[5]]
+    from_year <- name_parts[[7]]
+    to_year <- name_parts[[8]]
+    full_title <- paste0(in_crop, " in ", first_crop, " | ", second_crop, " ", from_year, "-", to_year)
+    plot(r, col=rev(terrain.colors(2000)), breaks=seq(0, 12000, length.out=2000), legend=F)
+    plot(r, col=rev(terrain.colors(12)), breaks=seq(0, 12000, length.out=13), legend.only=T)
+    title(main=full_title)
+    #plot(r, main=full_title)
+    dev.off()
+  }
+}
+
 
 setwd("P:/monica-germany/bkr-avgs/")
 setwd("P:/monica-germany/landkreise-avgs/")
