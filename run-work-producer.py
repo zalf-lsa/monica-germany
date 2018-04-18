@@ -255,7 +255,11 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         crops_in_setups.add(setup["crop-id"])
 
     for crop_id in crops_in_setups:
-        create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv", wgs84, gk5)
+        try:
+            create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv", wgs84, gk5)
+        except IOError:
+            print "Couldn't read file:", paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv"
+            continue
 
     def create_ascii_grid_interpolator(arr, meta, ignore_nodata=True):
         "read an ascii grid into a map, without the no-data values"
@@ -451,7 +455,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             height_nn = dem_gk5_interpolate(sr_gk5, sh_gk5)
                             slope = slope_gk5_interpolate(sr_gk5, sh_gk5)
                             
-                            seed_harvest_cs = ilr_seed_harvest_data[crop_id]["interpolate"](sr_gk5, sh_gk5)
+                            ilr_interpolate = ilr_seed_harvest_data[crop_id]["interpolate"]
+                            seed_harvest_cs = ilr_interpolate(sr_gk5, sh_gk5) if ilr_interpolate else None
 
                             unique_jobs[(crow, ccol, soil_id, int(round(height_nn/10.0)*10), int(round(slope)), seed_harvest_cs)] += 1
 
@@ -493,71 +498,72 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             env_template["cropRotation"][0]["worksteps"][0]["crop"] = custom_crop   
 
                         # set external seed/harvest dates
-                        seed_harvest_data = ilr_seed_harvest_data[crop_id]["data"][seed_harvest_cs]
-                        if seed_harvest_data:
-                            is_winter_crop = ilr_seed_harvest_data[crop_id]["is-winter-crop"]
+                        if seed_harvest_cs:
+                            seed_harvest_data = ilr_seed_harvest_data[crop_id]["data"][seed_harvest_cs]
+                            if seed_harvest_data:
+                                is_winter_crop = ilr_seed_harvest_data[crop_id]["is-winter-crop"]
 
-                            if setup["sowing-date"] == "fixed":
-                                sowing_date = seed_harvest_data["sowing-date"]
-                            elif setup["sowing-date"] == "auto":
-                                sowing_date = seed_harvest_data["latest-sowing-date"]
+                                if setup["sowing-date"] == "fixed":
+                                    sowing_date = seed_harvest_data["sowing-date"]
+                                elif setup["sowing-date"] == "auto":
+                                    sowing_date = seed_harvest_data["latest-sowing-date"]
 
-                            sds = [int(x) for x in sowing_date.split("-")]
-                            sd = date(2001, sds[1], sds[2])
-                            sdoy = sd.timetuple().tm_yday
+                                sds = [int(x) for x in sowing_date.split("-")]
+                                sd = date(2001, sds[1], sds[2])
+                                sdoy = sd.timetuple().tm_yday
 
-                            if setup["harvest-date"] == "fixed":
-                                 harvest_date = seed_harvest_data["harvest-date"]                         
-                            elif setup["harvest-date"] == "auto":
-                                harvest_date = seed_harvest_data["latest-harvest-date"]
+                                if setup["harvest-date"] == "fixed":
+                                    harvest_date = seed_harvest_data["harvest-date"]                         
+                                elif setup["harvest-date"] == "auto":
+                                    harvest_date = seed_harvest_data["latest-harvest-date"]
 
-                            hds = [int(x) for x in harvest_date.split("-")]
-                            hd = date(2001, hds[1], hds[2])
-                            hdoy = hd.timetuple().tm_yday
+                                hds = [int(x) for x in harvest_date.split("-")]
+                                hd = date(2001, hds[1], hds[2])
+                                hdoy = hd.timetuple().tm_yday
 
-                            esds = [int(x) for x in seed_harvest_data["earliest-sowing-date"].split("-")]
-                            esd = date(2001, esds[1], esds[2])
+                                esds = [int(x) for x in seed_harvest_data["earliest-sowing-date"].split("-")]
+                                esd = date(2001, esds[1], esds[2])
 
-                            # sowing after harvest should probably never occur in both fixed setup!
-                            if setup["sowing-date"] == "fixed" and setup["harvest-date"] == "fixed":
-                                calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
-                                worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
-                            
-                            elif setup["sowing-date"] == "fixed" and setup["harvest-date"] == "auto":
-                                if is_winter_crop:
+                                # sowing after harvest should probably never occur in both fixed setup!
+                                if setup["sowing-date"] == "fixed" and setup["harvest-date"] == "fixed":
                                     calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                else:
-                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
-                                worksteps[0]["date"] = seed_harvest_data["sowing-date"]
-                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+                                    worksteps[0]["date"] = seed_harvest_data["sowing-date"]
+                                    worksteps[1]["date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+                                
+                                elif setup["sowing-date"] == "fixed" and setup["harvest-date"] == "auto":
+                                    if is_winter_crop:
+                                        calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                    else:
+                                        calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
+                                    worksteps[0]["date"] = seed_harvest_data["sowing-date"]
+                                    worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
-                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "fixed":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
-                                calc_sowing_date = date(2000, 12, 31) + timedelta(days=max(hdoy+1, sdoy))
-                                worksteps[0]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(sds[0], calc_sowing_date.month, calc_sowing_date.day)
-                                worksteps[1]["date"] = seed_harvest_data["harvest-date"]
+                                elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "fixed":
+                                    worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
+                                    calc_sowing_date = date(2000, 12, 31) + timedelta(days=max(hdoy+1, sdoy))
+                                    worksteps[0]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(sds[0], calc_sowing_date.month, calc_sowing_date.day)
+                                    worksteps[1]["date"] = seed_harvest_data["harvest-date"]
 
-                            elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
-                                worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
-                                if is_winter_crop:
-                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
-                                else:
-                                    calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
-                                worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
-                                worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
+                                elif setup["sowing-date"] == "auto" and setup["harvest-date"] == "auto":
+                                    worksteps[0]["earliest-date"] = seed_harvest_data["earliest-sowing-date"] if esd > date(esd.year, 6, 20) else "{:04d}-{:02d}-{:02d}".format(sds[0], 6, 20)
+                                    if is_winter_crop:
+                                        calc_harvest_date = date(2000, 12, 31) + timedelta(days=min(hdoy, sdoy-1))
+                                    else:
+                                        calc_harvest_date = date(2000, 12, 31) + timedelta(days=hdoy)
+                                    worksteps[0]["latest-date"] = seed_harvest_data["latest-sowing-date"]
+                                    worksteps[1]["latest-date"] = "{:04d}-{:02d}-{:02d}".format(hds[0], calc_harvest_date.month, calc_harvest_date.day)
 
-                            if create_only_seed_harvest_doys_grids:
-                                sh_grids[0][vrow, vcol] = seed_harvest_data["earliest-sowing-doy"]
-                                sh_grids[1][vrow, vcol] = seed_harvest_data["sowing-doy"]
-                                sh_grids[2][vrow, vcol] = seed_harvest_data["latest-sowing-doy"]
-                                sh_grids[3][vrow, vcol] = seed_harvest_data["earliest-harvest-doy"]
-                                sh_grids[4][vrow, vcol] = seed_harvest_data["harvest-doy"]
-                                sh_grids[5][vrow, vcol] = seed_harvest_data["latest-harvest-doy"]
-                                continue
+                                if create_only_seed_harvest_doys_grids:
+                                    sh_grids[0][vrow, vcol] = seed_harvest_data["earliest-sowing-doy"]
+                                    sh_grids[1][vrow, vcol] = seed_harvest_data["sowing-doy"]
+                                    sh_grids[2][vrow, vcol] = seed_harvest_data["latest-sowing-doy"]
+                                    sh_grids[3][vrow, vcol] = seed_harvest_data["earliest-harvest-doy"]
+                                    sh_grids[4][vrow, vcol] = seed_harvest_data["harvest-doy"]
+                                    sh_grids[5][vrow, vcol] = seed_harvest_data["latest-harvest-doy"]
+                                    continue
 
-                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
-                        #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
+                            #print "dates: ", int(seed_harvest_cs), ":", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
+                            #print "dates: ", int(seed_harvest_cs), ":", worksteps[1]["latest-date"], "<", worksteps[0]["earliest-date"], "<", worksteps[0]["latest-date"] 
 
                         #print "sowing:", worksteps[0], "harvest:", worksteps[1]
                         
