@@ -95,6 +95,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "start-row": "0",
         "end-row": "-1",
         "setups-file": "sim_setups_ts.csv", #mb.csv",
+        "run-setups": "[1]",
         "sim": "sim.json",
         "crop": "crop.json",
         "site": "site.json",
@@ -144,8 +145,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         run_setups = [0]
     else:
         setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/" + config["setups-file"])
-        run_setups = [1, 2, 3, 4]
-
+        run_setups = json.loads(config["run-setups"])
 
     def read_header(path_to_ascii_grid_file):
         "read metadata from esri ascii grid file"
@@ -932,7 +932,10 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     })
 
     def process_message(msg):
-        
+
+        if not hasattr(process_message, "wnof_count"):
+            process_message.wnof_count = 0
+
         leave = False
 
         if msg["type"] == "finish":
@@ -1063,7 +1066,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
         elif write_normal_output_files:
 
             if msg.get("type", "") in ["jobs-per-cell", "no-data", "setup_data"]:
-                print "c: ignoring", msg.get("type", "")
+                #print "c: ignoring", msg.get("type", "")
                 return
 
             print "c: received work result ", process_message.received_env_count, " customId: ", str(msg.get("customId", "").values())
@@ -1078,8 +1081,10 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
             soil_id = custom_id.get("soil_id", -1)
             uj_id = custom_id.get("unique_job_id", -1)
             
+            process_message.wnof_count += 1
+
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out-normal/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
+            with open("out-normal/out-" + str(process_message.wnof_count) + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
                 for data_ in msg.get("data", []):
