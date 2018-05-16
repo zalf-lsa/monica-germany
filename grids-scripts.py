@@ -51,6 +51,26 @@ def read_header(path_to_ascii_grid_file):
                 metadata[sline[0].strip().lower()] = float(sline[1].strip())
     return metadata, header_str
 
+def filter_grid():
+    path_to_arr = "P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg.asc"
+    _, header_str = read_header(path_to_arr)
+
+    arr = np.loadtxt(path_to_arr, skiprows=6)
+    cor = np.loadtxt("N:/germany/corine2006_1000_gk5.asc", skiprows=6)
+
+    #arr[cor not in [-9999, 200, 210, 211, 212, 240, 241, 242, 243, 244]] = -9999.0
+
+    rows, cols = arr.shape
+    for row in range(rows):
+        for col in range(cols):
+            corine = cor[row, col]
+            if int(corine) not in [-9999, 200, 210, 211, 212, 240, 241, 242, 243, 244]:
+                arr[row, col] = -9999 
+
+    np.savetxt("P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_arable_land.asc", arr, header=header_str.strip(), delimiter=" ", comments="", fmt="%.1f")
+if __name__ == "#__main__":
+    filter_grid()
+
 def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern = None):
 
     config = {
@@ -506,17 +526,17 @@ def create_avg_grid(path_to_dir):
 
     for id, acc_arr in acc_arrs.iteritems():
         acc_arr["arr"] /= acc_arr["count"]
-        np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"], delimiter=" ", comments="", fmt="%.1f")
+        np.savetxt(path_to_dir + acc_arr["filename"], acc_arr["arr"], header=acc_arr["header"].strip(), delimiter=" ", comments="", fmt="%.1f")
         print("wrote:", acc_arr["filename"])
 if __name__ == "__main__": 
     #create_avg_grid("P:/monica-germany/UBA-final-runs/grassland/grassland-out/")
 
-    for (run_id, calib_run_id) in [(1,8)]:
+    for run_id in [1,2,3,4]:
         #dir1 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/"
         #dir2 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/aggregated/"
         #dir1 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/"
         #dir2 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/aggregated/"
-        dir1 = "P:/monica-germany/UBA-final-runs/grassland/2018-03-23/revised-outputs/"
+        dir1 = "P:/O3/2018-04-19/out_costa_rica_" + str(run_id) + "/"
    
         if os.path.exists(dir1):
             create_avg_grid(dir1)
