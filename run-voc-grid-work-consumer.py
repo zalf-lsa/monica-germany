@@ -90,14 +90,16 @@ def create_output(result):
 
                 cm_count_to_vals[vals["CM-count"]].update(vals)
     
+
     for cmc in sorted(cm_count_to_vals.keys()):
+        print cm_count_to_vals[cmc] 
         if cm_count_to_vals[cmc]["last-doy"] >= 365:
             del cm_count_to_vals[cmc]
 
     return cm_count_to_vals
 
 
-def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, path_to_csv_output_dir):
+def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, path_to_csv_output_dir, setup_id):
     "write grids row by row"
 
     is_data_row = len(filter(lambda x: x != -9999, row_col_data[row].values())) > 0
@@ -199,8 +201,8 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
 
 
     if not hasattr(write_row_to_grids, "nodata_row_count"):
-        write_row_to_grids.nodata_row_count = 0
-        write_row_to_grids.list_of_output_files = []
+        write_row_to_grids.nodata_row_count = defaultdict(lambda: 0)
+        write_row_to_grids.list_of_output_files = defaultdict(list)
 
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
@@ -264,10 +266,10 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
 
         is_no_data_row = no_data_cols == ncols
         if is_no_data_row:
-            write_row_to_grids.nodata_row_count += 1
+            write_row_to_grids.nodata_row_count[setup_id] += 1
 
     def write_nodata_rows(file_):
-        for _ in range(write_row_to_grids.nodata_row_count):
+        for _ in range(write_row_to_grids.nodata_row_count[setup_id]):
             rowstr = " ".join(["-9999" for __ in range(ncols)])
             file_.write(rowstr +  "\n")
 
@@ -290,7 +292,7 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
             if not os.path.isfile(path_to_file):
                 with open(path_to_file, "w") as _:
                     _.write(header)
-                    write_row_to_grids.list_of_output_files.append(path_to_file)
+                    write_row_to_grids.list_of_output_files[setup_id].append(path_to_file)
 
             with open(path_to_file, "a") as file_:
                 write_nodata_rows(file_)
@@ -300,30 +302,33 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
     # if we're at the end of the output and just empty lines are left, then they won't be written in the
     # above manner because there won't be any rows with data where they could be written before
     # so add no-data rows simply to all files we've written to before
-    if is_no_data_row and write_row_to_grids.list_of_output_files:
-        for path_to_file in write_row_to_grids.list_of_output_files:
+    if is_no_data_row and write_row_to_grids.list_of_output_files[setup_id]:
+        for path_to_file in write_row_to_grids.list_of_output_files[setup_id]:
             with open(path_to_file, "a") as file_:
                 write_nodata_rows(file_)
-        write_row_to_grids.nodata_row_count = 0
+        write_row_to_grids.nodata_row_count[setup_id] = 0
     
     # clear the no-data row count when no-data rows have been written before a data row
     if not is_no_data_row:
-        write_row_to_grids.nodata_row_count = 0
+        write_row_to_grids.nodata_row_count[setup_id] = 0
 
     if row in row_col_data:
         del row_col_data[row]
 
 
-def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}):
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}, shared_id = None):
     "collect data from workers"
 
     config = {
         "user": "stella", # "berg-lc",
-        "port": server["port"] if server["port"] else "77773",
+        "port": server["port"] if server["port"] else "7777",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
-        "server": server["server"] if server["server"] else "cluster3", #"localhost", 
-        "start-row": "0",
-        "end-row": "-1"
+        "server": server["server"] if server["server"] else "localhost", 
+        #"start-row": "0",
+        #"end-row": "-1",
+        "shared_id": shared_id,
+        "out": None,
+        "csv-out": None
     }
     if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
@@ -334,20 +339,23 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     paths = PATHS[config["user"]]
     if path_to_output_dir:
         paths["local-path-to-output-dir"] = path_to_output_dir
-
-    try:
-        os.makedirs(paths["local-path-to-output-dir"])
-    except:
-        pass
-
-    data = defaultdict(list)
+    if config["out"]:
+        paths["local-path-to-output-dir"] = config["out"]
+    if config["out"]:
+        paths["local-path-to-csv-output-dir"] = config["csv-out"]
 
     print "consumer config:", config
 
-    received_env_count = 1
     context = zmq.Context()
-    socket = context.socket(zmq.PULL)
-    socket.connect("tcp://localhost:" + config["no-data-port"])
+    socket = context.socket(zmq.DEALER)
+    socket.setsockopt(zmq.IDENTITY, config["shared_id"])
+
+    data_no_data_socket = context.socket(zmq.PULL)
+    data_no_data_socket.connect("tcp://localhost:" + config["no-data-port"])
+
+    poller = zmq.Poller()
+    poller.register(socket, zmq.POLLIN)
+    poller.register(data_no_data_socket, zmq.POLLIN)
 
     if LOCAL_RUN:
         socket.connect("tcp://localhost:" + config["port"])
@@ -357,134 +365,177 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     leave = False
     write_normal_output_files = False
 
-    if not write_normal_output_files:  
-        print("loading template for output...")
-        #template_grid = create_template_grid(PATHS[USER]["LOCAL_PATH_TO_ARCHIV"] + "Soil/Carbiocial_Soil_Raster_final.asc", n_rows, n_cols)
-        #datacells_per_row = np.sum(template_grid, axis=1) #.tolist()
-        print("load complete")
+    setup_id_to_data = defaultdict(lambda: {
+        "data": None,
+        "queued_msgs": []
+    })
 
-        config_received = False
-        while not config_received:
-            try:
-                msg = socket.recv_json()
-                config_received = True
-            except:
-                continue
-            
-        start_row = int(config["start-row"])
-        end_row = int(config["end-row"])    
-        nrows = end_row - start_row + 1 if start_row > 0 and end_row >= start_row else int(msg["nrows"])
-        ncols = int(msg["ncols"])
-        cellsize = int(msg["cellsize"])
-        xllcorner = int(msg["xllcorner"])
-        yllcorner = int(msg["yllcorner"])
-        no_data = int(msg["no-data"])
+    def process_message(msg):
 
-        header = "ncols\t\t" + str(ncols) + "\n" \
-                 "nrows\t\t" + str(nrows) + "\n" \
-                 "xllcorner\t" + str(xllcorner) + "\n" \
-                 "yllcorner\t" + str(yllcorner) + "\n" \
-                 "cellsize\t" + str(cellsize) + "\n" \
-                 "NODATA_value\t" + str(no_data) + "\n"
+        if not hasattr(process_message, "wnof_count"):
+            process_message.wnof_count = 0
 
-        data = {
-            "row-col-data": defaultdict(lambda: defaultdict(list)),
-            "datacell-count": defaultdict(lambda: ncols),
-            "jobs-per-cell-count": defaultdict(lambda: defaultdict(lambda: -1)),
-            "next-row": start_row
-        }
+        leave = False
 
-        #debug_file = open("debug.out", "w")
-
-
-    while not leave:
-
-        try:
-            result = socket.recv_json(encoding="latin-1")
-        except:
-            continue
-
-        if result["type"] == "finish":
-            print "received finish message"
+        if msg["type"] == "finish":
+            print "c: received finish message"
             leave = True
 
-        elif not write_normal_output_files:
-            custom_id = result["customId"]
-            ci_parts = custom_id.split("|")
-            resolution = int(ci_parts[0])
-            row = int(ci_parts[1])
-            col = int(ci_parts[2])
-            crow = int(ci_parts[3])
-            ccol = int(ci_parts[4])
-            soil_id = int(ci_parts[5])
+        elif msg["type"] == "setup_data":
 
-            if result.get("type", "") == "jobs-per-cell":
-                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + result.get("customId", "") \
+            setup_id = msg["setup_id"]
+            last_setup = msg["last_setup"]
+            start_row = msg["start_row"]
+            end_row = msg["end_row"]    
+            nrows = end_row - start_row + 1 if start_row > 0 and end_row >= start_row else msg["nrows"]
+            ncols = msg["ncols"]
+            cellsize = msg["cellsize"]
+            xllcorner = msg["xllcorner"]
+            yllcorner = msg["yllcorner"]
+            no_data = msg["no-data"]
+
+            header = "ncols\t\t" + str(ncols) + "\n" \
+                    "nrows\t\t" + str(nrows) + "\n" \
+                    "xllcorner\t" + str(xllcorner) + "\n" \
+                    "yllcorner\t" + str(yllcorner) + "\n" \
+                    "cellsize\t" + str(cellsize) + "\n" \
+                    "NODATA_value\t" + str(no_data) + "\n"
+
+            setup_id_to_data[setup_id]["data"] = {
+                "start_row": start_row,
+                "end_row": end_row,
+                "nrows": nrows,
+                "ncols": ncols,
+                "header": header,
+                "out_dir_exists": False,
+                "last_setup": last_setup,
+                "row-col-data": defaultdict(lambda: defaultdict(list)),
+                "datacell-count": defaultdict(lambda: ncols),
+                "jobs-per-cell-count": defaultdict(lambda: defaultdict(lambda: -1)),
+                "next-row": start_row
+            }
+
+            # process queued message received before setup_data message
+            for res in setup_id_to_data[setup_id]["queued_msgs"]:
+                process_message(res)
+            setup_id_to_data[setup_id]["queued_msgs"] = []
+
+        elif not write_normal_output_files:
+            custom_id = msg["customId"]
+            setup_id = custom_id["setup_id"]
+
+            data = setup_id_to_data[setup_id]["data"]
+            # if we haven't received a setup_data message for this setup_id, queue messages
+            if not data:
+                setup_id_to_data[setup_id]["queued_msgs"].append(msg)
+                return
+
+            resolution = custom_id["resolution"]
+            row = custom_id["vrow"]
+            col = custom_id["vcol"]
+            crow = custom_id.get("crow", -1)
+            ccol = custom_id.get("ccol", -1)
+            soil_id = custom_id.get("soil_id", -1)
+            uj_id = custom_id.get("unique_job_id", -1)
+
+            if msg.get("type", "") == "jobs-per-cell":
+                debug_msg = "received jobs-per-cell message count: " + str(msg["count"]) + " customId: " + str(msg.get("customId", "").values()) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
                 #debug_file.write(debug_msg + "\n")
-                data["jobs-per-cell-count"][row][col] += 1 + result["count"]
+                data["jobs-per-cell-count"][row][col] += 1 + msg["count"]
                 #print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
-            elif result.get("type", "") == "no-data":
-                debug_msg = "received no-data message customId: " + result.get("customId", "") \
+            elif msg.get("type", "") == "no-data":
+                debug_msg = "received no-data message customId: " + str(msg.get("customId", "").values()) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
                 #debug_file.write(debug_msg + "\n")
                 data["row-col-data"][row][col] = -9999
                 data["jobs-per-cell-count"][row][col] = 0
-            elif "data" in result:
-                debug_msg = "received work result " + str(received_env_count) + " customId: " + result.get("customId", "") \
+            elif "data" in msg:
+                debug_msg = "received work result " + str(process_message.received_env_count) + " customId: " + str(msg.get("customId", "").values()) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
                 #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
                 #print debug_msg
                 #debug_file.write(debug_msg + "\n")
-                data["row-col-data"][row][col].append(create_output(result))
+                data["row-col-data"][row][col].append(create_output(msg))
                 data["jobs-per-cell-count"][row][col] -= 1
 
-                received_env_count = received_env_count + 1
+                process_message.received_env_count = process_message.received_env_count + 1
 
             if data["jobs-per-cell-count"][row][col] == 0:
                 data["datacell-count"][row] -= 1
 
             while data["next-row"] in data["row-col-data"] and data["datacell-count"][data["next-row"]] == 0:
-                write_row_to_grids(data["row-col-data"], data["next-row"], ncols, header, paths["local-path-to-output-dir"], paths["local-path-to-csv-output-dir"])
+                
+                path_to_out_dir = paths["local-path-to-output-dir"] + str(setup_id) + "/"
+                path_to_csv_out_dir = paths["local-path-to-csv-output-dir"] + str(setup_id) + "/"
+                if not data["out_dir_exists"]:
+                    if os.path.isdir(path_to_out_dir) and os.path.exists(path_to_out_dir):
+                        data["out_dir_exists"] = True
+                    else:
+                        try:
+                            os.makedirs(path_to_out_dir)
+                            data["out_dir_exists"] = True
+                        except OSError:
+                            print "c: Couldn't create dir:", path_to_out_dir, "! Exiting."
+                            exit(1)
+                    if os.path.isdir(path_to_csv_out_dir) and os.path.exists(path_to_csv_out_dir):
+                        data["out_dir_exists"] = True
+                    else:
+                        try:
+                            os.makedirs(path_to_csv_out_dir)
+                            data["out_dir_exists"] = True
+                        except OSError:
+                            print "c: Couldn't create dir:", path_to_csv_out_dir, "! Exiting."
+                            exit(1)
+                
+                write_row_to_grids(data["row-col-data"], data["next-row"], data["ncols"], data["header"], path_to_out_dir, path_to_csv_out_dir, setup_id)
+                
                 debug_msg = "wrote row: "  + str(data["next-row"]) + " next-row: " + str(data["next-row"]+1) + " rows unwritten: " + str(data["row-col-data"].keys())
                 print debug_msg
                 #debug_file.write(debug_msg + "\n")
-                data["insert-nodata-rows-count"] = 0 # should have written the nodata rows for this period and 
                 
                 data["next-row"] += 1 # move to next row (to be written)
 
-                if leave_after_finished_run and ((end_row < 0 and data["next-row"] > nrows-1) or (end_row >= 0 and data["next-row"] > end_row)): 
-                    print "all results received, exiting"
-                    leave = True
-                    break
+                if leave_after_finished_run \
+                and ((data["end_row"] < 0 and data["next-row"] > data["nrows"]-1) \
+                    or (data["end_row"] >= 0 and data["next-row"] > data["end_row"])): 
+                    
+                    # if all setups are done, the run_setups list should be empty and we can return
+                    if data["last_setup"]:
+                        print "c: all results received, exiting"
+                        leave = True
+                        break
                 
         elif write_normal_output_files:
 
-            if result.get("type", "") in ["jobs-per-cell", "no-data", "target-grid-metadata"]:
-                print "ignoring", result.get("type", "")
-                continue
+            if msg.get("type", "") in ["jobs-per-cell", "no-data", "setup_data"]:
+                #print "ignoring", result.get("type", "")
+                return
 
-            print "received work result ", received_env_count, " customId: ", result.get("customId", "")
+            print "received work result ", process_message.received_env_count, " customId: ", str(msg.get("customId", "").values())
 
-            custom_id = result["customId"]
-            ci_parts = custom_id.split("|")
-            resolution = int(ci_parts[0])
-            row = int(ci_parts[1])
-            col = int(ci_parts[2])
-            crow = int(ci_parts[3])
-            ccol = int(ci_parts[4])
-            soil_id = int(ci_parts[5])
+            custom_id = msg["customId"]
+            setup_id = custom_id["setup_id"]
+            resolution = custom_id["resolution"]
+            row = custom_id["vrow"]
+            col = custom_id["vcol"]
+            crow = custom_id.get("crow", -1)
+            ccol = custom_id.get("ccol", -1)
+            soil_id = custom_id.get("soil_id", -1)
+            uj_id = custom_id.get("unique_job_id", -1)
             
+            process_message.wnof_count += 1
+
             #with open("out/out-" + str(i) + ".csv", 'wb') as _:
-            with open("out-normal/out-" + custom_id.replace("|", "_") + ".csv", 'wb') as _:
+            with open("out-normal/out-" + str(process_message.wnof_count) + ".csv", 'wb') as _:
                 writer = csv.writer(_, delimiter=",")
 
-                for data_ in result.get("data", []):
+                for data_ in msg.get("data", []):
                     results = data_.get("results", [])
                     orig_spec = data_.get("origSpec", "")
                     output_ids = data_.get("outputIds", [])
@@ -502,7 +553,25 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
                     writer.writerow([])
 
-            received_env_count = received_env_count + 1
+            process_message.received_env_count = process_message.received_env_count + 1
+
+        return leave
+
+    process_message.received_env_count = 0
+
+
+    while not leave:
+        try:
+            socks = dict(poller.poll())
+        except:
+            continue
+
+        if socket in socks:
+            msg = socket.recv_json(encoding="latin-1")
+            leave = process_message(msg)
+        if data_no_data_socket in socks:
+            msg = data_no_data_socket.recv_json(encoding="latin-1")
+            leave = process_message(msg)
 
     print "exiting run_consumer()"
     #debug_file.close()

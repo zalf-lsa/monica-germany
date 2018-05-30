@@ -49,33 +49,34 @@ LOCAL_RUN = False
 PATHS = {
     "berg-lc": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
-        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        #"path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
+        "path-to-climate-dir": "N:/climate/",
+        "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
         "path-to-data-dir": "N:/",
         "path-to-projects-dir": "P:/",
-        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
         "local-path-to-output-dir": "out/"
-        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
+        
     },
     "berg-xps15": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
-        "path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
-        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        #"path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
+        "path-to-climate-dir": "N:/climate/",
+        "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
         "path-to-data-dir": "N:/",
         "path-to-projects-dir": "P:/",
-        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
         "local-path-to-output-dir": "out/"
-        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/"
     },
     "stella": {
         "include-file-base-path": "C:/Users/stella/Documents/GitHub",
-        "path-to-climate-csvs-dir": "Z:/data/climate/dwd/csvs/germany/",
-        #"path-to-climate-csvs-dir": "N:/climate/isimip/csvs/germany/",
+        #"path-to-climate-csvs-dir": "Z:/data/climate/dwd/csvs/germany/",
+        "path-to-climate-dir": "Z:/data/climate/",
+        "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
         "path-to-data-dir": "Z:/data/",
         "path-to-projects-dir": "Z:/projects/",
-        "archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
+        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
         "local-path-to-output-dir": "out/"
-        #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/isimip/csvs/germany/",
     }
 }
 
@@ -96,10 +97,14 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "end-row": "-1",
         "setups-file": "sim_setups_ts.csv", #mb.csv",
         "run-setups": "[1]",
-        "sim": "sim.json",
-        "crop": "crop.json",
-        "site": "site.json",
-        "shared_id": shared_id
+        "sim.json": "sim.json",
+        "crop.json": "crop.json",
+        "site.json": "site.json",
+        "shared_id": shared_id,
+        "climate_data": "dwd",
+        "climate_model": "",
+        "climate_scenario": "",
+        "climate_region": "germany"
     }
     # read commandline args only if script is invoked directly from commandline
     if len(sys.argv) > 1 and __name__ == "__main__":
@@ -132,8 +137,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 data = {}
                 for i, header_col in enumerate(header_cols):
                     value = row[i]
-                    if value in ["true", "false"]:
-                        value = True if value == "true" else False
+                    if value.lower() in ["true", "false"]:
+                        value = value == "true"
                     if i == 0:
                         value = int(value)
                     data[header_col] = value 
@@ -329,7 +334,13 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
             return NearestNDInterpolator(np.array(points), np.array(values))
 
-    climate_gk5_interpolate = create_climate_gk5_interpolator_from_json_file(paths["path-to-climate-csvs-dir"] + "../latlon-to-rowcol.json", wgs84, gk5)
+    climate_data_to_gk5_interpolator = {}
+    for run_id in run_setups:
+        setup = setups[run_id]
+        climate_data = setup["climate_data"]
+        if not climate_data in climate_data_to_gk5_interpolator:
+            path = paths["path-to-climate-dir"] + climate_data + "/latlon-to-rowcol.json"
+            climate_data_to_gk5_interpolator[climate_data] = create_climate_gk5_interpolator_from_json_file(path, wgs84, gk5)
 
     sent_env_count = 1
     start_time = time.clock()
@@ -340,16 +351,20 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         if setup_id not in setups:
             continue
         setup = setups[setup_id]
+        climate_data = setup["climate_data"]
+        climate_model = setup["climate_model"]
+        climate_scenario = setup["climate_scenario"]
+        climate_region = setup["climate_region"]
 
-        with open(setup["sim.json"] if setup["sim.json"] else config["sim"]) as _:
+        with open(config["sim"]) as _:
             sim_json = json.load(_)
 
         sim_json["include-file-base-path"] = paths["include-file-base-path"]
 
-        with open(setup["site.json"] if setup["site.json"] else config["site"]) as _:
+        with open(config["site"]) as _:
             site_json = json.load(_)
 
-        with open(setup["crop.json"] if setup["crop.json"] else config["crop"]) as _:
+        with open(config["crop"]) as _:
             crop_json = json.load(_)
 
         path_to_soil_map = paths["path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
@@ -466,7 +481,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                             sh_gk5 = yllcorner + (scellsize / 2) + (srows - row - 1) * scellsize
                             sr_gk5 = xllcorner + (scellsize / 2) + col * scellsize
                             #inter = crow/ccol encoded into integer
-                            crow, ccol = climate_gk5_interpolate(sr_gk5, sh_gk5)
+                            crow, ccol = climate_data_to_gk5_interpolator[climate_data](sr_gk5, sh_gk5)
 
                             if setup["landcover"]:
                                 corine_id = corine_gk5_interpolate(sr_gk5, sh_gk5)
@@ -659,10 +674,12 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
                         env_template["csvViaHeaderOptions"] = sim_json["climate.csv-options"]
 
-                        if LOCAL_RUN:
-                            env_template["pathToClimateCSV"] = paths["path-to-climate-csvs-dir"] + "row-" + str(crow) + "/col-" + str(ccol) + ".csv"
-                        else:
-                            env_template["pathToClimateCSV"] = paths["archive-path-to-climate-csvs-dir"] + "row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        subpath_to_csv = setup["climate_data"] + "csvs/" \
+                        + (setup["climate_model"] + "/" if setup["climate_model"] else "") \
+                        + (setup["climate_scenario"] + "/" if setup["climate_scenario"] else "") \
+                        + climate_region + "/row-" + str(crow) + "/col-" + str(ccol) + ".csv"
+                        env_template["pathToClimateCSV"] = (paths["path-to-climate-dir"] if LOCAL_RUN else paths["archive-path-to-climate-dir"]) + subpath_to_csv
+                        print env_template["pathToClimateCSV"]
 
                         #print env_template["pathToClimateCSV"]
 
@@ -899,16 +916,10 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     if config["out"]:
         paths["local-path-to-output-dir"] = config["out"]
 
-    #try:
-    #    os.makedirs(paths["local-path-to-output-dir"])
-    #except:
-    #    pass
-
     print "c: config:", config
 
-    received_env_count = 1
     context = zmq.Context.instance()
-    socket = context.socket(zmq.DEALER)#PULL)
+    socket = context.socket(zmq.DEALER
     socket.setsockopt(zmq.IDENTITY, config["shared_id"])
 
     data_no_data_socket = context.socket(zmq.PAIR)
@@ -969,7 +980,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 "ncols": ncols,
                 "header": header,
                 "out_dir_exists": False,
-                "last_setup": msg["last_setup"],
+                "last_setup": last_setup,
                 "row-col-data": defaultdict(lambda: defaultdict(list)),
                 "datacell-count": defaultdict(lambda: ncols),
                 "jobs-per-cell-count": defaultdict(lambda: defaultdict(lambda: -1)),
