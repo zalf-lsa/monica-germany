@@ -107,7 +107,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             if k in config:
                 config[k] = v
 
-    print "p: config:", config
+    print "config:", config
 
     paths = PATHS[config["user"]]
 
@@ -145,6 +145,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     else:
         setups = read_sim_setups(paths["path-to-projects-dir"] + "monica-germany/" + config["setups-file"])
         run_setups = json.loads(config["run-setups"])
+    print "read sim setups: ", paths["path-to-projects-dir"] + "monica-germany/" + config["setups-file"]
 
     def read_header(path_to_ascii_grid_file):
         "read metadata from esri ascii grid file"
@@ -259,6 +260,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     for crop_id in crops_in_setups:
         try:
             create_seed_harvest_gk5_interpolator_and_read_data(paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv", wgs84, gk5)
+            print "created seed harvest gk5 interpolator and read data: ", paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv"
         except IOError:
             print "Couldn't read file:", paths["path-to-projects-dir"] + "monica-germany/ILR_SEED_HARVEST_doys_" + crop_id + ".csv"
             continue
@@ -292,20 +294,23 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
 
         return NearestNDInterpolator(np.array(points), np.array(values))
 
-    path_to_dem_grid = paths["path-to-data-dir"] + "/germany/dem_1000_gk5.asc"
+    path_to_dem_grid = paths["path-to-data-dir"] + "germany/dem_1000_gk5.asc"
     dem_metadata, _ = read_header(path_to_dem_grid)
     dem_grid = np.loadtxt(path_to_dem_grid, dtype=int, skiprows=6)
     dem_gk5_interpolate = create_ascii_grid_interpolator(dem_grid, dem_metadata)
+    print "read: ", path_to_dem_grid
     
-    path_to_slope_grid = paths["path-to-data-dir"] + "/germany/slope_1000_gk5.asc"
+    path_to_slope_grid = paths["path-to-data-dir"] + "germany/slope_1000_gk5.asc"
     slope_metadata, _ = read_header(path_to_slope_grid)
     slope_grid = np.loadtxt(path_to_slope_grid, dtype=float, skiprows=6)
     slope_gk5_interpolate = create_ascii_grid_interpolator(slope_grid, slope_metadata)
+    print "read: ", path_to_slope_grid
 
-    path_to_corine_grid = paths["path-to-data-dir"] + "/germany/corine2006_1000_gk5.asc"
+    path_to_corine_grid = paths["path-to-data-dir"] + "germany/corine2006_1000_gk5.asc"
     corine_meta, _ = read_header(path_to_corine_grid)
     corine_grid = np.loadtxt(path_to_corine_grid, dtype=int, skiprows=6)
     corine_gk5_interpolate = create_ascii_grid_interpolator(corine_grid, corine_meta)
+    print "read: ", path_to_corine_grid
 
     cdict = {}
     def create_climate_gk5_interpolator_from_json_file(path_to_latlon_to_rowcol_file, wgs84, gk5):
@@ -335,6 +340,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         if not climate_data in climate_data_to_gk5_interpolator:
             path = paths["path-to-climate-dir"] + climate_data + "/csvs/latlon-to-rowcol.json"
             climate_data_to_gk5_interpolator[climate_data] = create_climate_gk5_interpolator_from_json_file(path, wgs84, gk5)
+            print "created climate_data to gk5 interpolator: ", path
 
     sent_env_count = 1
     start_time = time.clock()
