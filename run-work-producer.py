@@ -43,7 +43,7 @@ LOCAL_RUN = False
 
 PATHS = {
     "berg-lc": {
-        "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
+        "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub/monica-parameters/",
         #"path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
         "path-to-climate-dir": "N:/climate/",
         "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
@@ -54,7 +54,7 @@ PATHS = {
         
     },
     "berg-xps15": {
-        "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub",
+        "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub/monica-parameters/",
         #"path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
         "path-to-climate-dir": "N:/climate/",
         "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
@@ -89,12 +89,12 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",
         "end-row": "-1",
-        "setups-file": "sim_setups_ts.csv", #mb.csv",
-        "run-setups": "[1]",
+        "setups-file": "sim_setups_voce.csv", #mb.csv",
+        "run-setups": "[1,2,3,4,5,6,7,8,9,10]",
         "sim.json": "sim-voc.json",
         "crop.json": "crop-voc.json",
         "site.json": "site.json",
-        "shared_id": shared_id,
+        "shared_id": "mib-vocs", #shared_id,
         "climate_data": "dwd",
         "climate_model": "",
         "climate_scenario": "",
@@ -353,6 +353,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         with open(config["sim.json"]) as _:
             sim_json = json.load(_)
 
+        if setup["start_year"]:
+            sim_json["climate.csv-options"]["start-date"] = str(setup["start_year"]) + "-01-01"
+        if setup["end_year"]:
+            sim_json["climate.csv-options"]["end-date"] = str(setup["end_year"]) + "-12-31" 
         sim_json["include-file-base-path"] = paths["include-file-base-path"]
 
         with open(config["site.json"]) as _:

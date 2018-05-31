@@ -92,7 +92,6 @@ def create_output(result):
     
 
     for cmc in sorted(cm_count_to_vals.keys()):
-        print cm_count_to_vals[cmc] 
         if cm_count_to_vals[cmc]["last-doy"] >= 365:
             del cm_count_to_vals[cmc]
 

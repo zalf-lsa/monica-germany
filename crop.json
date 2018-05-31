@@ -2,9 +2,9 @@
 	"crops": {
 		"SM": {
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/maize.json"],
+				"species": ["include-from-file", "projects/sustag/maize.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/silage-maize.json"],
+					"=": ["include-from-file", "projects/sustag/silage-maize.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -21,17 +21,17 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
+			"residueParams": ["include-from-file", "crop-residues/maize.json"]
 		},
 		"WW": {
 			"is-winter-crop": true,
 			"cropParams": {
 				"species": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/wheat.json"],
+					"=": ["include-from-file", "projects/sustag/wheat.json"],
 					"TransitionStageLeafExp": 2
 				},
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/winter-wheat.json"],
+					"=": ["include-from-file", "projects/sustag/winter-wheat.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -56,17 +56,17 @@
 					"RefLeafExp": 16
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/wheat.json"]
+			"residueParams": ["include-from-file", "crop-residues/wheat.json"]
 		},
 		"WR": {
 			"is-winter-crop": true,
 			"cropParams": {
 				"species": {
-					"=": ["include-from-file", "monica-parameters/crops/rye.json"],
+					"=": ["include-from-file", "crops/rye.json"],
 					"TransitionStageLeafExp": 2
 				},
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/crops/rye/winter-rye.json"],
+					"=": ["include-from-file", "crops/rye/winter-rye.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -91,14 +91,14 @@
 					"RefLeafExp": 16
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/rye.json"]
+			"residueParams": ["include-from-file", "crop-residues/rye.json"]
 		},
 		"WB": {
 			"is-winter-crop": true,
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/barley.json"],
+				"species": ["include-from-file", "projects/sustag/barley.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/winter-barley.json"],
+					"=": ["include-from-file", "projects/sustag/winter-barley.json"],
 					"OrganIdsForSecondaryYield": [
 							{
 								"organId": 2,
@@ -121,13 +121,13 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/barley.json"]
+			"residueParams": ["include-from-file", "crop-residues/barley.json"]
 		},
 		"SB": {
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/barley.json"],
+				"species": ["include-from-file", "projects/sustag/barley.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/spring-barley.json"],
+					"=": ["include-from-file", "projects/sustag/spring-barley.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -150,14 +150,14 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/barley.json"]
+			"residueParams": ["include-from-file", "crop-residues/barley.json"]
 		},
 		"WRa": {
 			"is-winter-crop": true,
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/rape.json"],
+				"species": ["include-from-file", "projects/sustag/rape.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/winter-rape.json"],
+					"=": ["include-from-file", "projects/sustag/winter-rape.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -180,13 +180,13 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/rape.json"]
+			"residueParams": ["include-from-file", "crop-residues/rape.json"]
 		},
 		"PO": {			
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/potato.json"],
+				"species": ["include-from-file", "projects/sustag/potato.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/moderately-early-potato.json"],
+					"=": ["include-from-file", "projects/sustag/moderately-early-potato.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -203,13 +203,13 @@
 					]
 				}
 			},			
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/potato.json"]
+			"residueParams": ["include-from-file", "crop-residues/potato.json"]
 		},
 		"SBee": {			
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/sugar-beet.json"],
+				"species": ["include-from-file", "projects/sustag/sugar-beet.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/sugar-beet-cv.json"],
+					"=": ["include-from-file", "projects/sustag/sugar-beet-cv.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -226,14 +226,14 @@
 					]
 				}
 			},			
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/beet.json"]
+			"residueParams": ["include-from-file", "crop-residues/beet.json"]
 		},
 		"WTr": {	
 			"is-winter-crop": true,		
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/triticale.json"],
+				"species": ["include-from-file", "projects/sustag/triticale.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/winter-triticale.json"],
+					"=": ["include-from-file", "projects/sustag/winter-triticale.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -256,13 +256,13 @@
 					]
 				}
 			},			
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/triticale.json"]
+			"residueParams": ["include-from-file", "crop-residues/triticale.json"]
 		},
 		"GM": {			
 			"cropParams": {
-				"species": ["include-from-file", "monica-parameters/projects/sustag/maize.json"],
+				"species": ["include-from-file", "projects/sustag/maize.json"],
 				"cultivar": {
-					"=": ["include-from-file", "monica-parameters/projects/sustag/grain-maize.json"],
+					"=": ["include-from-file", "projects/sustag/grain-maize.json"],
 					"OrganIdsForSecondaryYield": [
 						{
 							"organId": 2,
@@ -285,13 +285,13 @@
 					]
 				}
 			},			
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
+			"residueParams": ["include-from-file", "crop-residues/maize.json"]
 		}
 	},
 	
 	"fert-params": {
-		"AN": ["include-from-file", "monica-parameters/mineral-fertilisers/AN.json"],
-		"org_fert": ["include-from-file", "monica-parameters/organic-fertilisers/PIS.json"]
+		"AN": ["include-from-file", "mineral-fertilisers/AN.json"],
+		"org_fert": ["include-from-file", "organic-fertilisers/PIS.json"]
 	}, 	
 
 	"cropRotation": {
@@ -684,7 +684,7 @@
 	},
 
 	"CropParameters": {
-		"DEFAULT": ["include-from-file", "monica-parameters/general/crop.json"],
+		"DEFAULT": ["include-from-file", "general/crop.json"],
 		"__enable_Photosynthesis_WangEngelTemperatureResponse__": false,
 		"__enable_T_response_leaf_expansion__": false
 	}

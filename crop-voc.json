@@ -3,7 +3,7 @@
 		"SM": {
 			"cropParams": {
 				"species": {
-					"=": ["include-from-file", "C:/Users/stella/Desktop/ZALF/VOCE/local_run/cal_params/maize.json"],
+					"=": ["include-from-file", "projects/fnr-voce/Landscape2018/maize.json"],
 					"VCMAX25": 110,
 					"EF_MONO":5.5,
 					"EF_MONOS": 0,
@@ -11,7 +11,7 @@
 					"CarboxylationPathway": 1
 				},
 				"cultivar": {
-					"=": ["include-from-file", "C:/Users/stella/Desktop/ZALF/VOCE/local_run/cal_params/silage-maize.json"],
+					"=": ["include-from-file", "projects/fnr-voce/Landscape2018/silage-maize.json"],
 					"AssimilatePartitioningCoeff": [
 						[
 							0.5,
@@ -79,14 +79,14 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/maize.json"]
+			"residueParams": ["include-from-file", "crop-residues/maize.json"]
 		},
 
 		"WRa": {
 			"is-winter-crop": true,
 			"cropParams": {
 					"species": {
-						"=": ["include-from-file", "monica-parameters/projects/fnr-voce/rape.json"],
+						"=": ["include-from-file", "projects/fnr-voce/Landscape2018/rape.json"],
 						"EF_MONO":4.5,
 						"EF_MONOS": 0,
 						"EF_ISO": 3,
@@ -94,7 +94,7 @@
 						"__FieldConditionModifier": 0.8
 					},
 					"cultivar": {
-						"=": ["include-from-file", "monica-parameters/projects/fnr-voce/winter-rape_ts.json"],
+						"=": ["include-from-file", "projects/fnr-voce/Landscape2018/winter-rape_ts.json"],
 						"AssimilatePartitioningCoeff": [
 						[
 							0.5,
@@ -146,13 +146,13 @@
 					]
 				}
 			},
-			"residueParams": ["include-from-file", "monica-parameters/crop-residues/rape.json"]
+			"residueParams": ["include-from-file", "crop-residues/rape.json"]
 		}
 	},
 	
 	"fert-params": {
-		"AN": ["include-from-file", "monica-parameters/mineral-fertilisers/AN.json"],
-		"org_fert": ["include-from-file", "monica-parameters/organic-fertilisers/PIS.json"]
+		"AN": ["include-from-file", "mineral-fertilisers/AN.json"],
+		"org_fert": ["include-from-file", "organic-fertilisers/PIS.json"]
 	}, 	
 
 	"cropRotation": {
@@ -245,7 +245,7 @@
 	},
 
 	"CropParameters": {
-		"DEFAULT": ["include-from-file", "monica-parameters/general/crop.json"],
+		"DEFAULT": ["include-from-file", "general/crop.json"],
 		"__enable_Photosynthesis_WangEngelTemperatureResponse__": false,
 		"__enable_T_response_leaf_expansion__": false,
 		"__enable_hourly_FvCB_photosynthesis__": true
