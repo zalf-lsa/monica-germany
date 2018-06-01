@@ -40,9 +40,31 @@
 			
 		],
 
+		"events": [
+			"crop", [
+				["CM-count", "LAST"],
+				["DOY|last-doy", "LAST"],
+				["Crop", "LAST"],
+				["Year", "LAST"],
+				["Globrad|Globrad-sum", "SUM"], 
+				["Tavg|Tavg", "AVG"],
+				["Precip|Precip-sum", "SUM"],
+				["LAI|LAI-max", "MAX"],
+				["Yield|Yield-last", "LAST"],
+				["GPP|GPP-sum", "SUM"],
+				["NPP|NPP-sum", "SUM"],
+				["NEP|NEP-sum", "SUM"],
+				["Ra|Ra-sum", "SUM"],
+				["Rh|Rh-sum", "SUM"],
+				["guenther-isoprene-emission|G-iso", "SUM"],
+				["guenther-monoterpene-emission|G-mono", "SUM"],
+				["Count|Cycle-length", "SUM"]
+			]
+
+		],
 		
 
-		"events": [
+		"voc orig events": [
 			"crop", [
 				["CM-count", "LAST"],
 				["DOY|last-doy", "LAST"],
