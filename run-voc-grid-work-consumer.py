@@ -26,6 +26,7 @@ import csv
 import types
 import os
 import json
+import time
 from datetime import datetime
 from collections import defaultdict, OrderedDict
 import numpy as np
@@ -315,12 +316,13 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
         del row_col_data[row]
 
 
-def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}, shared_id = None):
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-server": None, "nd-port": None}, shared_id = None):
     "collect data from workers"
 
     config = {
         "user": "stella", # "berg-lc",
         "port": server["port"] if server["port"] else "7777",
+        "no-data-server": server["nd-server"] if server["nd-server"] else "localhost",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
         "server": server["server"] if server["server"] else "localhost", 
         #"start-row": "0",
@@ -350,7 +352,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     socket.setsockopt(zmq.IDENTITY, config["shared_id"])
 
     data_no_data_socket = context.socket(zmq.PULL)
-    data_no_data_socket.connect("tcp://localhost:" + config["no-data-port"])
+    data_no_data_socket.connect("tcp://" + config["no-data-server"] + ":" + config["no-data-port"])
 
     poller = zmq.Poller()
     poller.register(socket, zmq.POLLIN)
@@ -558,7 +560,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
     process_message.received_env_count = 0
 
-
+    start_time = time.clock()
     while not leave:
         try:
             socks = dict(poller.poll())
@@ -572,6 +574,8 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
             msg = data_no_data_socket.recv_json(encoding="latin-1")
             leave = process_message(msg)
 
+    stop_time = time.clock()
+    print "receiving", process_message.received_env_count, "envs took", (stop_time - start_time), "seconds"
     print "exiting run_consumer()"
     #debug_file.close()
 
