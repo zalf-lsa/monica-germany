@@ -107,12 +107,9 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, pat
 
         if not os.path.isfile(path_to_row_file):
             with open(path_to_row_file, "w") as _:
-                _.write("CM-count,row,col,Crop,Year,Globrad,Tmax,Tmin,Tavg,Precip,LAImax,AbBiom,G-iso,G-mono,cycle-length,\
-Globrad2,Tmax2,Tmin2,Tavg2,Precip2,LAI2,AbBiom2,G-iso2,G-mono2,length-S2,\
-Globrad3,Tmax3,Tmin3,Tavg3,Precip3,LAI3,AbBiom3,G-iso3,G-mono3,length-S3,\
-Globrad4,Tmax4,Tmin4,Tavg4,Precip4,LAI4,AbBiom4,G-iso4,G-mono4,length-S4,\
-Globrad5,Tmax5,Tmin5,Tavg5,Precip5,LAI5,AbBiom5,G-iso5,G-mono5,length-S5,\
-Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
+                _.write("CM-count,row,col,Crop,Year,\
+                Globrad-sum,Tavg,Precip-sum,LAI-max,Yield-last,\
+                GPP-sum,NPP-sum,NEP-sum,Ra-sum,Rh-sum,G-iso,G-mono,Cycle-length\n")
 
         with open(path_to_row_file, 'ab') as _:
             writer = csv.writer(_, delimiter=",")
@@ -130,71 +127,19 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
                                 col,
                                 data["Crop"],
                                 data["Year"],
-                                data["Globrad"],
-                                data["Tmax"],
-                                data["Tmin"],
+                                data["Globrad-sum"],
                                 data["Tavg"],
-                                data["Precip"],
-                                data["LAImax"],
-                                data["AbBiom"],
+                                data["Precip-sum"],
+                                data["LAI-max"],
+                                data["Yield-last"],
+                                data["GPP-sum"],
+                                data["NPP-sum"],
+                                data["NEP-sum"],
+                                data["Ra-sum"],
+                                data["Rh-sum"],
                                 data["G-iso"],
                                 data["G-mono"],
-                                data["cycle-length"],
-                                
-                                data.get("Globrad2", "NA"),
-                                data.get("Tmax2", "NA"),
-                                data.get("Tmin2", "NA"),
-                                data.get("Tavg2", "NA"),
-                                data.get("Precip2", "NA"),
-                                data.get("LAI2", "NA"),
-                                data.get("AbBiom2", "NA"),
-                                data.get("G-iso2", "NA"),
-                                data.get("G-mono2", "NA"),
-                                data.get("length-S2", "NA"),
-
-                                data.get("Globrad3", "NA"),
-                                data.get("Tmax3", "NA"),
-                                data.get("Tmin3", "NA"),
-                                data.get("Tavg3", "NA"),
-                                data.get("Precip3", "NA"),
-                                data.get("LAI3", "NA"),
-                                data.get("AbBiom3", "NA"),
-                                data.get("G-iso3", "NA"),
-                                data.get("G-mono3", "NA"),
-                                data.get("length-S3", "NA"),
-
-                                data.get("Globrad4", "NA"),
-                                data.get("Tmax4", "NA"),
-                                data.get("Tmin4", "NA"),
-                                data.get("Tavg4", "NA"),
-                                data.get("Precip4", "NA"),
-                                data.get("LAI4", "NA"),
-                                data.get("AbBiom4", "NA"),
-                                data.get("G-iso4", "NA"),
-                                data.get("G-mono4", "NA"),
-                                data.get("length-S4", "NA"),
-
-                                data.get("Globrad5", "NA"),
-                                data.get("Tmax5", "NA"),
-                                data.get("Tmin5", "NA"),
-                                data.get("Tavg5", "NA"),
-                                data.get("Precip5", "NA"),
-                                data.get("LAI5", "NA"),
-                                data.get("AbBiom5", "NA"),
-                                data.get("G-iso5", "NA"),
-                                data.get("G-mono5", "NA"),
-                                data.get("length-S5", "NA"),
-
-                                data.get("Globrad6", "NA"),
-                                data.get("Tmax6", "NA"),
-                                data.get("Tmin6", "NA"),
-                                data.get("Tavg6", "NA"),
-                                data.get("Precip6", "NA"),
-                                data.get("LAI6", "NA"),
-                                data.get("AbBiom6", "NA"),
-                                data.get("G-iso6", "NA"),
-                                data.get("G-mono6", "NA"),
-                                data.get("length-S6", "NA")
+                                data["Cycle-length"]
                             ]
                             writer.writerow(row_)
 
@@ -206,27 +151,19 @@ Globrad6,Tmax6,Tmin6,Tavg6,Precip6,LAI6,AbBiom6,G-iso6,G-mono6,length-S6\n")
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
+        "Globrad-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Precip-sum": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "LAI-max": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Yield-last": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "GPP-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "NPP-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "NEP-sum": {"data" : make_dict_nparr(), "cast-to": "int"},
+        "Ra-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "Rh-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-iso": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-iso2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono2": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "length-S2": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "G-iso3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono3": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "length-S3": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "G-iso4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono4": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "length-S4": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "G-iso5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono5": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "length-S5": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "G-iso6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "G-mono6": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "length-S6": {"data" : make_dict_nparr(), "cast-to": "int"},
-        "LAImax": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "Tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "Globrad": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "cycle-length": {"data" : make_dict_nparr(), "cast-to": "int"}
+        "Cycle-length": {"data" : make_dict_nparr(), "cast-to": "int"}
     }
 
     cmc_to_crop = {}
@@ -319,7 +256,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     "collect data from workers"
 
     config = {
-        "user": "stella", # "berg-lc",
+        "user": "berg-lc",
         "port": server["port"] if server["port"] else "7777",
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
         "server": server["server"] if server["server"] else "localhost", 
