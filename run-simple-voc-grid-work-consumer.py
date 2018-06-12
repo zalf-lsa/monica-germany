@@ -45,7 +45,7 @@ PATHS = {
         "local-path-to-csv-output-dir": "csv-out/"
     },
     "berg-xps15": {
-        "local-path-to-data-dir": "N:/",
+        "local-path-to-data-dir": "D:/",
         "local-path-to-output-dir": "out/",
         "local-path-to-csv-output-dir": "csv-out/"
     },
@@ -265,12 +265,12 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     "collect data from workers"
 
     config = {
-        "user": "berg-lc",
+        "user": "berg-xps15",
         "port": server["port"] if server["port"] else "7777",
         "server": server["server"] if server["server"] else "cluster1", #localhost", 
         "start-row": "0",
         "end-row": "-1",
-        "shared_id": "mib-vocs", #shared_id,
+        "shared_id": shared_id,
         "out": "out-voc/", #None,
         "csv-out": "out-voc-csv/", #None,
         "no-of-setups": 14 #None
@@ -292,15 +292,17 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     print "consumer config:", config
 
     context = zmq.Context()
-    socket = context.socket(zmq.DEALER)
-    socket.setsockopt(zmq.IDENTITY, config["shared_id"])
+    if config["shared_id"]:
+        socket = context.socket(zmq.DEALER)
+        socket.setsockopt(zmq.IDENTITY, config["shared_id"])
+    else:
+        socket = context.socket(zmq.PULL)
 
     if LOCAL_RUN:
         socket.connect("tcp://localhost:" + config["port"])
     else:
         socket.connect("tcp://" + config["server"] + ":" + config["port"])
 
-    #socket.recv_json()   
     #socket.RCVTIMEO = 1000
     leave = False
     write_normal_output_files = False
@@ -322,8 +324,14 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     path_to_soil_grid = paths["local-path-to-data-dir"] + "germany/buek1000_1000_gk5.asc"
     soil_metadata, header = read_header(path_to_soil_grid)
     soil_grid_template = np.loadtxt(path_to_soil_grid, dtype=int, skiprows=6)
+    #set invalid soils / water to no-data
+    soil_grid_template[soil_grid_template < 1] = -9999
+    soil_grid_template[soil_grid_template > 71] = -9999
+    #set all data values to one, to count them later
     soil_grid_template[soil_grid_template != -9999] = 1
+    #set all no-data values to 0, to ignore them while counting
     soil_grid_template[soil_grid_template == -9999] = 0
+    #count cols in rows
     datacells_per_row = np.sum(soil_grid_template, axis=1)
 
     start_row = int(config["start-row"])
@@ -340,7 +348,6 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
         "datacell-count": datacells_per_row.copy(),
         "next-row": start_row
     })
-
 
     def process_message(msg):
 
@@ -366,9 +373,9 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
             #ccol = custom_id.get("ccol", -1)
             #soil_id = custom_id.get("soil_id", -1)
 
-            debug_msg = "received work result " + str(process_message.received_env_count) + " customId: " + str(msg.get("customId", "").values()) \
+            debug_msg = "received work result " + str(process_message.received_env_count) + " customId: " + str(msg.get("customId", "")) \
             + " next row: " + str(data["next-row"]) \
-            + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
+            + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) + " cells_per_row: " + str(datacells_per_row[row])#\
             #+ " rows unwritten: " + str(data["row-col-data"].keys()) 
             print debug_msg
             #debug_file.write(debug_msg + "\n")
@@ -465,7 +472,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
         return leave
 
-    process_message.received_env_count = 0
+    process_message.received_env_count = 1
 
     while not leave:
         try:
