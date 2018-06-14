@@ -64,7 +64,7 @@ PATHS = {
         "local-path-to-output-dir": "out/"
     },
     "stella": {
-        "include-file-base-path": "C:/Users/stella/Documents/GitHub",
+        "include-file-base-path": "C:/Users/stella/Documents/GitHub/monica-parameters/",
         #"path-to-climate-csvs-dir": "Z:/data/climate/dwd/csvs/germany/",
         "path-to-climate-dir": "Z:/data/climate/",
         "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
@@ -83,15 +83,15 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "berg-xps15",
+        "user": "stella",#"berg-xps15",
         "port": server["port"] if server["port"] else "6666",
         "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",
         "end-row": "-1",
-        "setups-file": "sim_setups_voce.csv", #mb.csv",
+        "setups-file": "sim_setups_voce_ts_report.csv", #mb.csv",
         "run-setups": "[1,2,3,4,5,6,7,8,9,10]",
         "sim.json": "sim_voc.json",
-        "crop.json": "crop_voc.json",
+        "crop.json": "crop_voc_ts_report.json",
         "site.json": "site.json",
         "shared_id": shared_id,
         "climate_data": "dwd",
@@ -129,7 +129,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 for i, header_col in enumerate(header_cols):
                     value = row[i]
                     if value.lower() in ["true", "false"]:
-                        value = value == "true"
+                        value = value.lower() == "true"
                     if i == 0:
                         value = int(value)
                     data[header_col] = value 

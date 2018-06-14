@@ -36,11 +36,29 @@
 			"daily", [
 				"Crop",
 				"Stage"
+			],
+			"_daily", [
+				"Date",
+				"CM-count",
+				"Crop",
+				"Stage",
+				"LAI",
+				"AbBiom",
+				"Yield",
+				"TraDef"
+			],
+
+			"crop", [
+				["AbBiom|AbBiom-final", "LAST"],
+				["TraDef|TraDef-avg", "AVG"],
+				["Stage|Stage-harv", "LAST"]
 			]
+
 			
 		],
 
 		"events": [
+			
 			"crop", [
 				["CM-count", "LAST"],
 				["DOY|last-doy", "LAST"],
@@ -58,7 +76,9 @@
 				["Rh|Rh-sum", "SUM"],
 				["guenther-isoprene-emission|G-iso", "SUM"],
 				["guenther-monoterpene-emission|G-mono", "SUM"],
-				["Count|Cycle-length", "SUM"]
+				["Count|Cycle-length", "SUM"],
+
+				
 			]
 
 		],

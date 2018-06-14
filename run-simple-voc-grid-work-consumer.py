@@ -113,7 +113,8 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, pat
                 with open(path_to_row_file, "w") as _:
                     _.write("CM-count,row,col,Crop,Year,\
                     Globrad-sum,Tavg,Precip-sum,LAI-max,Yield-last,\
-                    GPP-sum,NPP-sum,NEP-sum,Ra-sum,Rh-sum,G-iso,G-mono,Cycle-length\n")
+                    GPP-sum,NPP-sum,NEP-sum,Ra-sum,Rh-sum,G-iso,G-mono,Cycle-length,\
+                    AbBiom-final,TraDef-avg,Stage-harv\n")
 
             with open(path_to_row_file, 'ab') as _:
                 writer = csv.writer(_, delimiter=",")
@@ -143,7 +144,11 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, pat
                                     data["Rh-sum"],
                                     data["G-iso"],
                                     data["G-mono"],
-                                    data["Cycle-length"]
+                                    data["Cycle-length"]#,
+
+                                    #data["AbBiom-final"],
+                                    #data["TraDef-avg"],
+                                    #data["Stage-harv"]
                                 ]
                                 writer.writerow(row_)
 
@@ -167,7 +172,11 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir, pat
         "Rh-sum": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-iso": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
         "G-mono": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-        "Cycle-length": {"data" : make_dict_nparr(), "cast-to": "int"}
+        "Cycle-length": {"data" : make_dict_nparr(), "cast-to": "int"},
+
+        #"AbBiom-final": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        #"TraDef-avg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 3},
+        #"Stage-harv": {"data" : make_dict_nparr(), "cast-to": "int"}
     }
 
     cmc_to_crop = {}
@@ -265,7 +274,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     "collect data from workers"
 
     config = {
-        "user": "berg-xps15",
+        "user": "stella",#"berg-xps15",
         "port": server["port"] if server["port"] else "7777",
         "server": server["server"] if server["server"] else "cluster1", #localhost", 
         "start-row": "0",
@@ -273,7 +282,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
         "shared_id": shared_id,
         "out": "out-voc/", #None,
         "csv-out": "out-voc-csv/", #None,
-        "no-of-setups": 14 #None
+        "no-of-setups": 1 #None
     }
     if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
@@ -438,8 +447,8 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
             custom_id = msg["customId"]
             setup_id = custom_id["setup_id"]
-            row = custom_id["vrow"]
-            col = custom_id["vcol"]
+            row = custom_id["srow"]
+            col = custom_id["scol"]
             #crow = custom_id.get("crow", -1)
             #ccol = custom_id.get("ccol", -1)
             #soil_id = custom_id.get("soil_id", -1)
