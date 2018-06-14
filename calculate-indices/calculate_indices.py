@@ -7,7 +7,7 @@ import numpy as np
 config = {
     "elevation-filter": -9999,
     "gwaterlevel-filter": 9999,
-    "write_files_for_R": True,
+    "write_files_for_R": False,
     "disregard": {
         #solve problems with last sim year and winter crops (duplicated files, one filled of 0 values)
         "year": 2012,
@@ -16,11 +16,11 @@ config = {
 }
 
 basepath = os.path.dirname(os.path.abspath(__file__))
-main_out_dir = "Z:/projects/monica-germany/UBA-final-runs/ww/2018-02-26/"#basepath + "/out/"
+main_out_dir = "Z:/projects/monica-germany/UBA-final-runs/silage-maize/2018-03-27/"#basepath + "/out/"
 out_for_R_script = {}
 
 def read_best_cals():
-    with open(main_out_dir + "best_cals.csv") as _:
+    with open(main_out_dir + "best_calibrations.csv") as _:
         reader =  csv.reader(_)
         reader.next()
         best_cals = {}
@@ -85,7 +85,7 @@ def check_obs_sim_length(obs, sim, entity):
         print("!!obs and sim lists of " + entity + " have different length!!")
 
 best_cals = read_best_cals()
-skip_folders = ["avg-agg-maps", "avg-maps"]
+skip_folders = ["avg-agg-maps", "avg-maps", "best", "maps", "maps_lk"]
 
 exp_dirs = [x[1] for x in os.walk(main_out_dir)][0]
 for exp_folder in exp_dirs:
@@ -154,6 +154,8 @@ for exp_folder in exp_dirs:
             #12= Silomais (SM)
             #13= Kornermais (GM)
 
+            my_cp = 12
+
             for row in reader:
                 if len(row)>2 and representsInt(row[1]):
                     lk = int(row[1])
@@ -165,14 +167,14 @@ for exp_folder in exp_dirs:
                     if lk in sim_lk:
                         year = int(row[0])
                         #all_years.add(year)
-                        if representsfloat(row[3]):
-                            if float(row[3]) == 0.0:
+                        if representsfloat(row[my_cp]):
+                            if float(row[my_cp]) == 0.0:
                                 #consider 0 as nodata
                                 continue
                             obs_lk.add(lk)
                             for bkr in lk_2_bkr[lk]:
                                 obs_bkr.add(bkr)
-                            obs_yield = float(row[3]) * 100 #kg ha-1
+                            obs_yield = float(row[my_cp]) * 100 #kg ha-1
                             yield_data[lk][year]["obs"] = obs_yield
 
         #print len(obs_lk)

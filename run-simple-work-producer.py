@@ -90,8 +90,8 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "end-row": "-1",
         "setups-file": "sim_setups_voce.csv", #mb.csv",
         "run-setups": "[1,2,3,4,5,6,7,8,9,10]",
-        "sim.json": "sim-voc.json",
-        "crop.json": "crop-voc.json",
+        "sim.json": "sim_voc.json",
+        "crop.json": "crop_voc.json",
         "site.json": "site.json",
         "shared_id": shared_id,
         "climate_data": "dwd",
@@ -358,7 +358,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         climate_scenario = setup["climate_scenario"]
         climate_region = setup["climate_region"]
 
-        with open(config["sim.json"]) as _:
+        with open(setup.get("sim.json", config["sim.json"])) as _:
             sim_json = json.load(_)
 
         if setup["start_year"]:
@@ -367,10 +367,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
             sim_json["climate.csv-options"]["end-date"] = str(setup["end_year"]) + "-12-31" 
         sim_json["include-file-base-path"] = paths["include-file-base-path"]
 
-        with open(config["site.json"]) as _:
+        with open(setup.get("site.json", config["site.json"])) as _:
             site_json = json.load(_)
 
-        with open(config["crop.json"]) as _:
+        with open(setup.get("crop.json", config["crop.json"])) as _:
             crop_json = json.load(_)
 
 
