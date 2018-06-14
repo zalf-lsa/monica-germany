@@ -56,9 +56,9 @@ PATHS = {
     "berg-xps15": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub/monica-parameters/",
         #"path-to-climate-csvs-dir": "D:/climate/dwd/csvs/germany/",
-        "path-to-climate-dir": "N:/climate/",
+        "path-to-climate-dir": "D:/climate/",
         "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
-        "path-to-data-dir": "N:/",
+        "path-to-data-dir": "D:/",
         "path-to-projects-dir": "P:/",
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
         "local-path-to-output-dir": "out/"
@@ -83,7 +83,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "berg-lc",
+        "user": "berg-xps15",
         "port": server["port"] if server["port"] else "6666",
         "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",
@@ -426,7 +426,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
                 if soil_id == -9999:
                     continue
                 if soil_id < 1 or soil_id > 71:
-                    #print "row/col:", row, "/", col, "has unknown soil_id:", soil_id
+                    #print "row/col:", srow, "/", scol, "has unknown soil_id:", soil_id
                     #unknown_soil_ids.add(soil_id)
                     continue
                 
