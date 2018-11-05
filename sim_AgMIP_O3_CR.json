@@ -26,6 +26,30 @@
 			"csv-separator": ","
 		},
 		
+		"_events": [
+			"daily", [
+				"Date", 
+				"DOY", 
+				"LAI", 
+				"Crop", 
+				"Stage", 
+				"Yield", 
+				"AbBiom", 
+				["OrgBiom", "Leaf"], 
+				["OrgBiom", "Shoot"], 
+				["OrgBiom", "Fruit"], 
+				"RootDep", 
+				"Tra", 
+				"TraDef", 
+				"AtmCO2", 
+				"AtmO3", 
+				"O3-short-damage", 
+				"O3-long-damage",
+				"O3-WS-gs-reduction",
+				"O3-total-uptake"
+			   ]
+		],
+
 		"events": [
 			"crop", [
 				["Crop", "LAST"],
@@ -50,6 +74,7 @@
 	"WaterDeficitResponseOn": true,
 	"EmergenceMoistureControlOn": false,
 	"EmergenceFloodingControlOn": false,
+	"FrostKillOn": false,
 
 	"UseAutomaticIrrigation": false,
 	"AutoIrrigationParams": {

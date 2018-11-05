@@ -16,3 +16,5 @@ calculate-indices/report_WW/
 calculate-indices/report_indices.csv
 .vscode
 statistical-data-out
+*.pyc
+1

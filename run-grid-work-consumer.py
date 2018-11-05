@@ -101,7 +101,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
     make_dict_nparr = lambda: defaultdict(lambda: np.full((ncols,), -9999, dtype=np.float))
 
     output_grids = {
-        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2}#,
+        "yield": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
 #        "biom-final": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
 #        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "crop-max-LAI": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 2},
@@ -119,8 +119,9 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
 #        "yearly-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "crop-avg-tavg": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
 #        "crop-sum-precip": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
-#        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-nfert": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "crop-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1},
+        "yearly-sum-nleach": {"data" : make_dict_nparr(), "cast-to": "float", "digits": 1}
     }
 
     cmc_to_crop = {}
@@ -209,7 +210,7 @@ def write_row_to_grids(row_col_data, row, ncols, header, path_to_output_dir):
         del row_col_data[row]
 
 
-def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}):
+def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, server = {"server": None, "port": None, "nd-port": None}, shared_id = None):
     "collect data from workers"
 
     config = {
@@ -218,7 +219,9 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
         "no-data-port": server["nd-port"] if server["nd-port"] else "5555",
         "server": server["server"] if server["server"] else "localhost", 
         "start-row": "0",
-        "end-row": "-1"
+        "end-row": "-1",
+        "shared_id": shared_id,
+        "out": None
     }
     if len(sys.argv) > 1 and __name__ == "__main__":
         for arg in sys.argv[1:]:
@@ -229,6 +232,8 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
     paths = PATHS[config["user"]]
     if path_to_output_dir:
         paths["local-path-to-output-dir"] = path_to_output_dir
+    if config["out"]:
+        paths["local-path-to-output-dir"] = config["out"]
 
     try:
         os.makedirs(paths["local-path-to-output-dir"])
@@ -305,16 +310,15 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
 
         elif not write_normal_output_files:
             custom_id = result["customId"]
-            ci_parts = custom_id.split("|")
-            resolution = int(ci_parts[0])
-            row = int(ci_parts[1])
-            col = int(ci_parts[2])
-            crow = int(ci_parts[3])
-            ccol = int(ci_parts[4])
-            soil_id = int(ci_parts[5])
+            #resolution = custom_id["resolution"]
+            row = custom_id["vrow"]
+            col = custom_id["vcol"]
+            #crow = custom_id["crow"]
+            #ccol = custom_id["ccol"]
+            #soil_id = custom_id["soil_id"]
 
             if result.get("type", "") == "jobs-per-cell":
-                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + result.get("customId", "") \
+                debug_msg = "received jobs-per-cell message count: " + str(result["count"]) + " customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
@@ -322,7 +326,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["jobs-per-cell-count"][row][col] += 1 + result["count"]
                 #print "--> jobs@row/col: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(row) + "/" + str(col)
             elif result.get("type", "") == "no-data":
-                debug_msg = "received no-data message customId: " + result.get("customId", "") \
+                debug_msg = "received no-data message customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row)
                 #print debug_msg
@@ -330,7 +334,7 @@ def run_consumer(path_to_output_dir = None, leave_after_finished_run = True, ser
                 data["row-col-data"][row][col] = -9999
                 data["jobs-per-cell-count"][row][col] = 0
             elif "data" in result:
-                debug_msg = "received work result " + str(received_env_count) + " customId: " + result.get("customId", "") \
+                debug_msg = "received work result " + str(received_env_count) + " customId: " + str(result.get("customId", "")) \
                 + " next row: " + str(data["next-row"]) + " jobs@col to go: " + str(data["jobs-per-cell-count"][row][col]) + "@" + str(col) \
                 + " cols@row to go: " + str(data["datacell-count"][row]) + "@" + str(row) #\
                 #+ " rows unwritten: " + str(data["row-col-data"].keys()) 

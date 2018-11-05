@@ -45,10 +45,11 @@ PATHS = {
     "berg-lc": {
         "include-file-base-path": "C:/Users/berg.ZALF-AD/GitHub/monica-parameters/",
         #"path-to-climate-csvs-dir": "N:/climate/dwd/csvs/germany/",
-        "path-to-climate-dir": "N:/climate/",
+        "path-to-climate-dir": "A:/data/climate/",
         "archive-path-to-climate-dir": "/archiv-daten/md/data/climate/",
-        "path-to-data-dir": "N:/",
-        "path-to-projects-dir": "P:/",
+        #"archive-path-to-climate-dir": "a:/data/climate/",
+        "path-to-data-dir": "A:/data/",
+        "path-to-projects-dir": "A:/projects/",
         #"archive-path-to-climate-csvs-dir": "/archiv-daten/md/data/climate/dwd/csvs/germany/",
         "local-path-to-output-dir": "out/"
         
@@ -91,10 +92,10 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
         "end-row": "-1",
         "setups-file": "sim_setups_voce.csv", #mb.csv",
         "run-setups": "[1,2,3,4,5,6,7,8,9,10]",
-        "sim.json": "sim-voc.json",
-        "crop.json": "crop-voc.json",
+        "sim.json": "sim.json",
+        "crop.json": "crop.json",
         "site.json": "site.json",
-        "shared_id": "mib-vocs", #shared_id,
+        "shared_id": shared_id,
         "climate_data": "dwd",
         "climate_model": "",
         "climate_scenario": "",

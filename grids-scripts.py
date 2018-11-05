@@ -75,11 +75,11 @@ def aggregate_by_grid(path_to_grids_dir = None, path_to_out_dir = None, pattern 
 
     config = {
         #"path-to-grids-dir": "P:/monica-germany/dwd-weather-germany-1995-2012/WW-1000m-patched-2017-11-30/",
-        "path-to-grids-dir": "2/no_calibration/", #"out/",
+        "path-to-grids-dir": "1_WB/no_calibration/", #"out/",
         
         "path-to-agg-grid": "N:/germany/landkreise_1000_gk3.asc",
         "path-to-agg2-grid": "N:/germany/bkr_1000_gk3.asc",
-        "path-to-out-dir": "landkreise-avgs/",
+        "path-to-out-dir": "1_WB/no_calibration/aggregated/",#"landkreise-avgs/",
         #"path-to-agg-grid": "D:/germany/bkr_1000_gk3.asc",
         #"path-to-out-dir": "bkr-avgs/",
 
@@ -531,12 +531,12 @@ def create_avg_grid(path_to_dir):
 if __name__ == "__main__": 
     #create_avg_grid("P:/monica-germany/UBA-final-runs/grassland/grassland-out/")
 
-    for run_id in [1,2,3,4]:
+    for crop_id in ["WW", "WR", "WRa", "SM", "GM", "SBee", "WB", "PO", "SB"]:
         #dir1 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/"
         #dir2 = "P:/monica-germany/UBA-final-runs/winter-barley/2018-03-08/" + str(run_id) + "/" + str(calib_run_id) + "/aggregated/"
         #dir1 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/"
         #dir2 = "P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/aggregated/"
-        dir1 = "P:/O3/2018-04-19/out_costa_rica_" + str(run_id) + "/"
+        dir1 = "C:/Users/berg.ZALF-AD/GitHub/monica-germany/1_" + crop_id + "/no_calibration/aggregated/"
    
         if os.path.exists(dir1):
             create_avg_grid(dir1)

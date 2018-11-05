@@ -39,7 +39,7 @@ def main():
                 config[k] = v 
 
     context = zmq.Context()
-    socket = context.socket(zmq.DEALER)#PULL)
+    socket = context.socket(zmq.PULL)
     if config["shared_id"]:
         socket.setsockopt(zmq.IDENTITY, config["shared_id"])
 

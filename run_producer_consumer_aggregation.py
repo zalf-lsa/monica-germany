@@ -48,28 +48,8 @@ class FuncThread(threading.Thread):
         self._target(*self._args)
 
 
-def prod_cons_calib(design_setup, custom_crop, server, calib_id="no_calibration"):
+def prod_cons_calib(setup, custom_crop, server, calib_id="no_calibration"):
 
-    setup = {
-        "run-id": design_setup["run.no"],
-        "crop-id": design_setup["crop-id"],
-        "groundwater-level": design_setup["GroundWaterLevel"],
-        "impenetrable-layer": design_setup["ImpenetrableLayer"],
-        "elevation": True,
-        "latitude": True,
-        "slope": design_setup["Slope"],
-        "sowing-date": design_setup["SowingDate"],
-        "harvest-date": design_setup["HarvestDate"],
-        "landcover": design_setup["LandCover"],
-        "fertilization": design_setup["Nresponse_and_Fertil"],
-        "NitrogenResponseOn": design_setup["Nresponse_and_Fertil"],
-        "irrigation": False,
-        "WaterDeficitResponseOn": design_setup["WaterDeficitResponse"],
-        "LeafExtensionModifier": design_setup["LeafExtensionModifier"],
-        "EmergenceMoistureControlOn": False,
-        "EmergenceFloodingControlOn": False
-    }
-    
     path_to_grids_output = str(setup["run-id"]) + "/" + str(calib_id) + "/"
 
     #clear directory first
@@ -96,5 +76,14 @@ def prod_cons_calib(design_setup, custom_crop, server, calib_id="no_calibration"
     year_to_lk_to_value = gs.aggregate_by_grid(path_to_grids_dir=path_to_grids_output,
                                                path_to_out_dir=path_to_aggregated_output,
                                                pattern="*_yield_*.asc")
+    year_to_lk_to_value = gs.aggregate_by_grid(path_to_grids_dir=path_to_grids_output,
+                                               path_to_out_dir=path_to_aggregated_output,
+                                               pattern="*_yearly-sum-nleach_*.asc")
+    year_to_lk_to_value = gs.aggregate_by_grid(path_to_grids_dir=path_to_grids_output,
+                                               path_to_out_dir=path_to_aggregated_output,
+                                               pattern="*_crop-sum-nleach_*.asc")
+    year_to_lk_to_value = gs.aggregate_by_grid(path_to_grids_dir=path_to_grids_output,
+                                               path_to_out_dir=path_to_aggregated_output,
+                                               pattern="*_crop-sum-nfert_*.asc")
 
     return year_to_lk_to_value

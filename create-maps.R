@@ -17,37 +17,205 @@ png("wheatwinterwheat_yield_1996_1.png", width=2000, height=2000, pointsize=30)
 plot(r, main="wheatwinterwheat_yield_1996_1")
 dev.off()
 
-setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
-#for(i in 1:32)
+
+
+elem <- c("yield", "Yield")
+r_380_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_1/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_380_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_3/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_380 <- (r_380_25 - r_380_75) / r_380_25 * 100.0
+
+out_filename_380 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_380_avg.png")
+png(out_filename_380, width=2000, height=2000, pointsize=30)
+plot(rp_380, col=rev(terrain.colors(2000)), breaks=seq(-10, 30, length.out=2000), legend=F)
+plot(rp_380, col=rev(terrain.colors(12)), breaks=seq(-10, 30, length.out=13), legend.only=T)
+#plot(rp_380, main=paste0(paste0(elem[[2]], " CO2 380ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_380, " created"))
+
+
+r_680_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_2/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_680_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_4/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_680 <- (r_680_25 - r_680_75) / r_680_25 * 100.0
+
+out_filename_680 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_680_avg.png")
+png(out_filename_680, width=2000, height=2000, pointsize=30)
+plot(rp_680, col=rev(terrain.colors(2000)), breaks=seq(-10, 30, length.out=2000), legend=F)
+plot(rp_680, col=rev(terrain.colors(12)), breaks=seq(-10, 30, length.out=13), legend.only=T)
+#plot(rp_680, main=paste0(paste0(elem[[2]], " CO2 680ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_680, " created"))
+
+
+
+
+elem <- c("biom-final", "AGB")
+r_380_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_1/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_380_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_3/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_380 <- (r_380_25 - r_380_75) / r_380_25 * 100.0
+
+out_filename_380 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_380_avg.png")
+png(out_filename_380, width=2000, height=2000, pointsize=30)
+plot(rp_380, col=rev(terrain.colors(2000)), breaks=seq(-10, 30, length.out=2000), legend=F)
+plot(rp_380, col=rev(terrain.colors(12)), breaks=seq(-10, 30, length.out=13), legend.only=T)
+#plot(rp_380, main=paste0(paste0(elem[[2]], " CO2 380ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_380, " created"))
+
+r_680_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_2/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_680_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_4/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_680 <- (r_680_25 - r_680_75) / r_680_25 * 100.0
+
+out_filename_680 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_680_avg.png")
+png(out_filename_680, width=2000, height=2000, pointsize=30)
+plot(rp_680, col=rev(terrain.colors(2000)), breaks=seq(-10, 30, length.out=2000), legend=F)
+plot(rp_680, col=rev(terrain.colors(12)), breaks=seq(-10, 30, length.out=13), legend.only=T)
+#plot(rp_680, main=paste0(paste0(elem[[2]], " CO2 680ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_680, " created"))
+
+
+
+
+elem <- c("crop-max-LAI", "LAI")
+r_380_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_1/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_380_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_3/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_380 <- (r_380_25 - r_380_75) / r_380_25 * 100.0
+
+out_filename_380 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_380_avg.png")
+png(out_filename_380, width=2000, height=2000, pointsize=30)
+plot(rp_380, col=rev(terrain.colors(2000)), breaks=seq(-10, 50, length.out=2000), legend=F)
+plot(rp_380, col=rev(terrain.colors(12)), breaks=seq(-10, 50, length.out=13), legend.only=T)
+#plot(rp_380, main=paste0(paste0(elem[[2]], " CO2 380ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_380, " created"))
+
+r_680_25 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_2/wheatspringwheat_", elem[[1]], "_avg.asc"))
+r_680_75 <- raster(paste0("P:/O3/2018-04-19/out_costa_rica_4/wheatspringwheat_", elem[[1]], "_avg.asc"))
+rp_680 <- (r_680_25 - r_680_75) / r_680_25 * 100.0
+
+out_filename_680 = paste0("P:/O3/2018-04-19/wheatspringwheat_", elem, "_680_avg.png")
+png(out_filename_680, width=2000, height=2000, pointsize=30)
+plot(rp_680, col=rev(terrain.colors(2000)), breaks=seq(-10, 50, length.out=2000), legend=F)
+plot(rp_680, col=rev(terrain.colors(12)), breaks=seq(-10, 50, length.out=13), legend.only=T)
+#plot(rp_680, main=paste0(paste0(elem[[2]], " CO2 680ppm, O3 25-75ppm")))
+dev.off()
+print(paste0(out_filename_680, " created"))
+
+
+
+
+
+library(RColorBrewer)
+r <- raster("P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_arable_land.asc")
+out_filename = "P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_arable_land.png"
+r <- raster("P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/aggregated/wheatwinterwheat_yield_avg.asc")
+out_filename = "P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_lk.png"
+r <- r / 100
+png(out_filename, width=2000, height=2000, pointsize=30)
+plot(r, col=brewer.pal(7, 'RdYlGn')[2:7], breaks=c(0, 65, 70, 75, 80, 85, 120), legend=F)
+plot(r, col=brewer.pal(7, 'RdYlGn')[2:7], breaks=c(0, 65, 70, 75, 80, 85, 120), legend.only=T)
+#plot(r, main=paste0("winter wheat avg (arable land)"))
+dev.off()
+print(paste0(out_filename, " created"))
+
+
+
+
+r <- raster("P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_arable_land.asc")
+out_filename = "P:/monica-germany/UBA-final-runs/winter-wheat/2018-03-13/best/wheatwinterwheat_yield_avg_arable_land_2.png"
+#r <- r / 100
+png(out_filename, width=2000, height=2000, pointsize=30)
+plot(r, col=rev(terrain.colors(2000)), breaks=seq(0, 12000, length.out=2000), legend=F)
+plot(r, col=rev(terrain.colors(12)), breaks=seq(0, 12000, length.out=13), legend.only=T)
+#plot(r, main=paste0("winter wheat avg (arable land)"))
+dev.off()
+print(paste0(out_filename, " created"))
+
+
+
+
+
+
+for(crop_id in list("WW", "WR", "WRa", "SM", "GM", "SBee", "WB", "PO", "SB"))
+{
+  dir <- paste0("C:/Users/berg.ZALF-AD/GitHub/monica-germany/1_", crop_id, "/no_calibration")
+  if(file.exists(dir))
+  {
+    setwd(dir)
+    files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
+    for(filename in files)
+    {
+      #print(filename)
+      out_filename = str_replace(filename, "asc", "png")
+      print(out_filename)
+      png(out_filename, width=2000, height=2000, pointsize=30)
+      r <- raster(filename)
+      parts = strsplit(out_filename, "_|\\.")[[1]]
+      plot(r, main=paste0(out_filename))
+      dev.off()
+    }
+  }
+  dir <- paste0("C:/Users/berg.ZALF-AD/GitHub/monica-germany/1_", crop_id, "/no_calibration/aggregated")
+  if(file.exists(dir))
+  {
+    setwd(dir)
+    files <- list.files(path=".", pattern=glob2rx("*.asc"), full.names=F, recursive=FALSE)
+    for(filename in files)
+    {
+      #print(filename)
+      out_filename = str_replace(filename, "asc", "png")
+      print(out_filename)
+      png(out_filename, width=2000, height=2000, pointsize=30)
+      r <- raster(filename)
+      parts = strsplit(out_filename, "_|\\.")[[1]]
+      plot(r, main=paste0(out_filename))
+      dev.off()
+    }
+  }
+}
+
+
+
+
+#setwd("C:/Users/berg.ZALF-AD/GitHub/monica-germany/")
+#setwd("P:/voce/scenarios/grids/")
+#for(i in list(1,10))
 #for(i in list(c(1,9)))
-for(dir in list(paste0("P:/monica-germany/UBA-final-runs/grassland/2018-03-23/revised-outputs")))
+#for(dir in list(paste0("P:/voce/scenarios/grids")))
+for(crop_id in list("WW")) #, "WR", "WRa", "SM", "GM", "SBee", "WB")),
 #for(dir in list(paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-27/best"),
 #                paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-27/best/", "/aggregated")))
 #for(dir in list(paste0("P:/monica-germany/UBA-final-runs/potato/2018-03-28/best"),
 #                paste0("P:/monica-germany/UBA-final-runs/potato/2018-03-28/best/", "/aggregated")))
 {
   #dir <- paste0("N:/germany")
-  #dir <- paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-09/best")
-  #dir <- paste0("P:/monica-germany/UBA-final-runs/silage-maize/2018-03-09/best/", "/aggregated")
+  #dir <- paste0("P:/voce/scenarios/grids/", i)
+  #dir <- paste0("1_", crop_id, "no_calibration", "/aggregated")
+  dir <- paste0("C:/Users/berg.ZALF-AD/GitHub/monica-germany/1_", crop_id, "/no_calibration")
   #dir <- paste0("P:/monica-germany/UBA-final-runs/winter-barley/2018-03-07/", i[[2]], "_best/")
   #dir <- paste0("P:/monica-germany/UBA-final-runs/winter-barley/2018-03-07/", i[[2]], "_best/", "/aggregated")
   #dir <- paste0("C:/Users/berg.ZALF-AD/GitHub/monica-germany/", i, "/no_calibration")
   if(file.exists(dir))
   {
     setwd(dir)
-    files <- list.files(path=".", pattern=glob2rx("*exported*.asc"), full.names=F, recursive=FALSE)
-    #print(files)
+    files <- list.files(path=".", pattern=glob2rx("*crop-sum-nfert*.asc"), full.names=F, recursive=FALSE)
+    print(files)
+    next
     for(filename in files)
     {
       out_filename = str_replace(filename, "asc", "png")
       print(out_filename)
       png(out_filename, width=2000, height=2000, pointsize=30)
       r <- raster(filename)
-      plot(r, col=rev(terrain.colors(2000)), breaks=seq(0, 14000, length.out=2000), legend=F)
-      plot(r, col=rev(terrain.colors(14)), breaks=seq(0, 14000, length.out=15), legend.only=T)
-      title(main=paste0("grassland exported cut biomass  ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
+      #r <- r / 10 ^ 6 * 5 * 12 #isoprene
+      #r <- r / 10 ^ 6 * 10 * 12 #monoterpene
+      #plot(r, col=rev(terrain.colors(2000)), breaks=seq(0, 0.08, length.out=2001), legend=F)
+      #plot(r, col=rev(terrain.colors(16)), breaks=seq(0, 0.08, length.out=17), legend.only=T)
+      #title(main=paste0("Guenther Monoterpen ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
       #plot(r, main=paste0("grassland N leach ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
       #plot(r, main=paste0("grassland exported cut biomass ", strsplit(out_filename, "_|\\.")[[1]][[3]]))
+      plot(r, main=paste0(strsplit(out_filename, "_|\\.")[[1]][[3]]))
+      #plot(r)
       dev.off()
     }
   }

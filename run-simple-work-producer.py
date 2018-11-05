@@ -83,7 +83,7 @@ def run_producer(setup = None, custom_crop = None, server = {"server": None, "po
     config_and_no_data_socket = context.socket(zmq.PUSH)
 
     config = {
-        "user": "stella",#"berg-xps15",
+        "user": "berg-lc",
         "port": server["port"] if server["port"] else "6666",
         "server": server["server"] if server["server"] else "localhost",
         "start-row": "0",

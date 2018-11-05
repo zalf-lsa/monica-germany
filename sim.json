@@ -41,6 +41,23 @@
 				["CM-count", "FIRST"],
 				["Year", "LAST"],
 				["Yield|yield", "LAST"],
+				["NFert|crop-sum-nfert", "SUM"],
+				["NLeach|crop-sum-nleach", "SUM"],
+				["DOY|harvest-doy", "LAST"]
+			],
+
+			"yearly", [
+				["CM-count", "FIRST"],
+				["NLeach|yearly-sum-nleach", "SUM"]
+			]
+		],
+
+		"prev events": [
+			"crop", [
+				["Crop", "FIRST"],
+				["CM-count", "FIRST"],
+				["Year", "LAST"],
+				["Yield|yield", "LAST"],
 				["DOY|harvest-doy", "LAST"]
 			]
 		],
@@ -136,6 +153,6 @@
 
 	"UseNMinMineralFertilisingMethod": true,
 	"NMinUserParams": { "min": 40, "max": 120, "delayInDays": 10 },
-	"NMinFertiliserPartition": ["include-from-file", "monica-parameters/mineral-fertilisers/AN.json"],
+	"NMinFertiliserPartition": ["include-from-file", "mineral-fertilisers/AN.json"],
 	"JulianDayAutomaticFertilising": 89
 }
